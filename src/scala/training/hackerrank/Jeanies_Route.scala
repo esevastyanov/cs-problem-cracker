@@ -12,11 +12,11 @@ object Jeanies_Route extends App
 
     import scala.collection.mutable.ArrayBuffer
 
-    private def neighbours(i: Int, m: Seq[Seq[Int]]) = {
+    private def neighbours(i: Int, m: Array[Array[Int]]) = {
       m.indices.filter(j => m(i)(j) != 0)
     }
 
-    private def removeUnusedLeaves(used: Set[Int], m: ArrayBuffer[ArrayBuffer[Int]]): Seq[Int] = {
+    private def removeUnusedLeaves(used: Set[Int], m: Array[Array[Int]]): Seq[Int] = {
       val removed = ArrayBuffer[Int]()
 
       def _do(toCheck: Seq[Int]): Unit = {
@@ -41,7 +41,7 @@ object Jeanies_Route extends App
       removed
     }
 
-    private def removeIntermediateNodes(m: ArrayBuffer[ArrayBuffer[Int]]): Seq[Int] = {
+    private def removeIntermediateNodes(m: Array[Array[Int]]): Seq[Int] = {
       val removed = ArrayBuffer[Int]()
       m.indices.foreach { i =>
         val ns = neighbours(i, m)
@@ -61,15 +61,26 @@ object Jeanies_Route extends App
       removed
     }
 
-    private def reduce(removed: Set[Int], m: Seq[Seq[Int]]): Seq[Seq[Int]] = {
-      for (i <- m.indices if !removed.contains(i)) yield {
-        for (j <- m.indices if !removed.contains(j)) yield {
-          m(i)(j)
+    private def reduce(removed: Set[Int], m: Array[Array[Int]]): Array[Array[Int]] = {
+      val reducedSize = m.length - removed.size
+      val reduced = Array.fill(reducedSize)(Array.fill(reducedSize)(0))
+      var ii = 0
+      for (i <- m.indices) yield {
+        if (!removed.contains(i)) {
+          var jj = 0
+          for (j <- m.indices) yield {
+            if (!removed.contains(j)) {
+              reduced(ii)(jj) = m(i)(j)
+              jj += 1
+            }
+          }
+          ii += 1
         }
       }
+      reduced
     }
 
-    private def getMostValuableLeaf(m: Seq[Seq[Int]]): Int = {
+    private def getMostValuableLeaf(m: Array[Array[Int]]): Int = {
       var leaf = -1
       var max = 0
       m.indices.foreach { i =>
@@ -83,7 +94,7 @@ object Jeanies_Route extends App
       leaf
     }
 
-    private def getFullWeights(start: Int, m: Seq[Seq[Int]]): Seq[Int] = {
+    private def getFullWeights(start: Int, m: Array[Array[Int]]): Seq[Int] = {
       val fws = ArrayBuffer.fill(m.length)(0)
 
       def _do(start: Int, prev: Int): Unit = {
@@ -98,25 +109,20 @@ object Jeanies_Route extends App
       fws
     }
 
-    private def go(node: Int, m: Seq[Seq[Int]], fws: Seq[Int]): Int = {
-      def _do(node: Int, prev: Int): Int = {
+    private def go(node: Int, m: Array[Array[Int]], fws: Seq[Int]): Int = {
+      def _do(node: Int, prev: Int, sum: Int): Int = {
         val ns = neighbours(node, m).filterNot(_ == prev)
-        if (ns.isEmpty) return 0
+        if (ns.isEmpty) return sum
         val nsAndWs = ns.map(nb => (nb, m(node)(nb) + fws(nb)))
         val (mn, _) = nsAndWs.maxBy(_._2)
-        nsAndWs.filterNot(_._1 == mn).map(_._2).sum * 2 + m(node)(mn) + _do(mn, node)
+        _do(mn, node, sum + nsAndWs.filterNot(_._1 == mn).map(_._2).sum * 2 + m(node)(mn))
       }
 
-      _do(node, -1)
+      _do(node, -1, 0)
     }
 
-    private def jeanisRoute(n: Int, letters: Seq[Int], routes: Seq[(Int, Int, Int)]): Int = {
+    private def jeanisRoute(n: Int, letters: Array[Int], g: Array[Array[Int]]): Int = {
       val lettersSet = letters.toSet
-      val g = ArrayBuffer.fill(n)(ArrayBuffer.fill(n)(0))
-      routes.foreach { case (from, to, weight) =>
-        g(from)(to) = weight
-        g(to)(from) = weight
-      }
       val removed = removeUnusedLeaves(lettersSet, g) ++ removeIntermediateNodes(g)
       val reducedGraph = reduce(removed.toSet, g)
       val mostValuableLeaf = getMostValuableLeaf(reducedGraph)
@@ -131,9 +137,14 @@ object Jeanies_Route extends App
     def main(args: Array[String]): Unit = {
       val sc = new java.util.Scanner(System.in)
       val n, k = sc.nextInt()
-      val letters = ArrayBuffer.fill(k)(sc.nextInt() - 1)
-      val routes = ArrayBuffer.fill(n - 1)((sc.nextInt() - 1, sc.nextInt() - 1, sc.nextInt()))
-      val res = jeanisRoute(n, letters, routes)
+      val letters = Array.fill(k)(sc.nextInt() - 1)
+      val g = Array.fill(n)(Array.fill(n)(0))
+      (1 until n).foreach { _ =>
+        val (i, j, w) = (sc.nextInt() - 1, sc.nextInt() - 1, sc.nextInt())
+        g(i)(j) = w
+        g(j)(i) = w
+      }
+      val res = jeanisRoute(n, letters, g)
       println(res)
     }
   }
