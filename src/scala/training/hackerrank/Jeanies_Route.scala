@@ -72,17 +72,20 @@ object Jeanies_Route extends App
       fws
     }
 
-    private def go(node: Int, g: Graph, fws: mutable.Map[Int, Int], limit: Int): Int = {
-      def _do(node: Int, prev: Int, sum: Int): Int = {
+    private def go(node: Int, g: Graph, fws: mutable.Map[Int, Int]): Int = {
+      def _do(node: Int, prev: Int, step: Int): Int = {
         val ns = g(node).keys.filterNot(_ == prev)
-        if (ns.isEmpty) return sum
+        if (ns.isEmpty) return 0
         val nsAndWs = ns.map(nb => (nb, g(node)(nb) + fws(nb)))
-        val (mn, _) = nsAndWs.maxBy(_._2)
-        val partialResult = sum + nsAndWs.filterNot(_._1 == mn).map(_._2).sum * 2
-        if (partialResult > limit) {
-          partialResult
+        if (step == 0 && nsAndWs.size >= 2) {
+          val (mn1, _) = nsAndWs.maxBy(_._2)
+          val exceptMn1 = nsAndWs.filterNot(_._1 == mn1)
+          val (mn2, _) = exceptMn1.maxBy(_._2)
+          val exceptMn1And2 = exceptMn1.filterNot(_._1 == mn2)
+          exceptMn1And2.map(_._2).sum * 2 + g(node)(mn1) + g(node)(mn2) + _do(mn1, node, step + 1) + _do(mn2, node, step + 1)
         } else {
-          _do(mn, node, partialResult + g(node)(mn))
+          val (mn, _) = nsAndWs.maxBy(_._2)
+          nsAndWs.filterNot(_._1 == mn).map(_._2).sum * 2 + g(node)(mn) + _do(mn, node, step + 1)
         }
       }
 
@@ -93,12 +96,11 @@ object Jeanies_Route extends App
       val lettersSet = letters.toSet
       removeUnusedLeaves(lettersSet, g)
       removeIntermediateNodes(g)
-      var minWeight = Int.MaxValue
-      g.keys.foreach { n =>
-        val result = go(n, g, getFullWeights(n, g), minWeight)
-        if (result < minWeight) minWeight = result
+      g.find(_._2.keys.size > 1).map { case (start, _) =>
+        go(start, g, getFullWeights(start, g))
+      }.getOrElse {
+        go(g.keys.head, g, getFullWeights(g.keys.head, g))
       }
-      minWeight
     }
 
     def main(args: Array[String]): Unit = {
