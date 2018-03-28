@@ -18,24 +18,22 @@ object Jeanies_Route extends App
     private def removeUnusedLeaves(used: Set[Int], g: Graph): Unit = {
       val removed = ArrayBuffer[Int]()
 
-      def _do(toCheck: Iterable[Int]): Unit = {
-        val nextToCheck = ArrayBuffer[Int]()
-        toCheck.foreach { i =>
-          if (!used.contains(i)) {
-            val ns = g(i).keys
-            val isLeaf = ns.size == 1
-            if (isLeaf) {
-              val nb = ns.head
-              g(nb) -= i
-              removed += i
-              nextToCheck += nb
-            }
+      def _do(toCheck: scala.collection.Set[Int]): Unit = {
+        val nextToCheck = mutable.Set[Int]()
+        (toCheck -- used).foreach { i =>
+          val ns = g(i).keys
+          val isLeaf = ns.size == 1
+          if (isLeaf) {
+            val nb = ns.head
+            g(nb) -= i
+            removed += i
+            nextToCheck += nb
           }
         }
         if (nextToCheck.nonEmpty) _do(nextToCheck)
       }
 
-      _do(g.keys)
+      _do(g.keySet)
       removed.foreach(g.remove)
     }
 
@@ -57,50 +55,43 @@ object Jeanies_Route extends App
       removed.foreach(g.remove)
     }
 
-    private def getFullWeights(start: Int, g: Graph): mutable.Map[Int, Int] = {
-      val fws = mutable.Map[Int, Int]().withDefaultValue(0)
+    private def calcutaleMinRouteWeight(g: Graph): Int = {
+      var maxRouteWeight = 0
+      var totalWeight = 0
+      val weights = mutable.Map[Int, Seq[Int]]().withDefaultValue(Seq(0))
 
-      def _do(start: Int, prev: Int): Unit = {
-        val ns = g(start).keys.filterNot(_ == prev)
-        ns.foreach { nb =>
-          _do(nb, start)
-          fws.put(start, fws(start) + g(start)(nb) + fws(nb))
+      def leaves = g.filter(_._2.size == 1).keys
+
+      def accumulateAndRemove(c: Int): Unit = {
+        if (g(c).isEmpty) return
+        val (p, wc) = g(c).head
+        totalWeight += wc
+        val wcs = weights(c)
+        val wps = weights(p)
+        val wrs = Seq(wps.max, wcs.map(_ + wc).max)
+        maxRouteWeight = math.max(maxRouteWeight, wrs.sum)
+        weights(p) = wrs
+        g -= c
+        g(p) -= c
+      }
+
+      def _do(): Unit = {
+        val ns = leaves
+        if (ns.nonEmpty) {
+          ns.foreach(accumulateAndRemove)
+          _do()
         }
       }
 
-      _do(start, -1)
-      fws
-    }
-
-    private def go(node: Int, g: Graph, fws: mutable.Map[Int, Int]): Int = {
-      def _do(node: Int, prev: Int, step: Int): Int = {
-        val ns = g(node).keys.filterNot(_ == prev)
-        if (ns.isEmpty) return 0
-        val nsAndWs = ns.map(nb => (nb, g(node)(nb) + fws(nb)))
-        if (step == 0 && nsAndWs.size >= 2) {
-          val (mn1, _) = nsAndWs.maxBy(_._2)
-          val exceptMn1 = nsAndWs.filterNot(_._1 == mn1)
-          val (mn2, _) = exceptMn1.maxBy(_._2)
-          val exceptMn1And2 = exceptMn1.filterNot(_._1 == mn2)
-          exceptMn1And2.map(_._2).sum * 2 + g(node)(mn1) + g(node)(mn2) + _do(mn1, node, step + 1) + _do(mn2, node, step + 1)
-        } else {
-          val (mn, _) = nsAndWs.maxBy(_._2)
-          nsAndWs.filterNot(_._1 == mn).map(_._2).sum * 2 + g(node)(mn) + _do(mn, node, step + 1)
-        }
-      }
-
-      _do(node, -1, 0)
+      _do()
+      2 * totalWeight - maxRouteWeight
     }
 
     private def jeanisRoute(n: Int, letters: Array[Int], g: Graph): Int = {
       val lettersSet = letters.toSet
       removeUnusedLeaves(lettersSet, g)
       removeIntermediateNodes(g)
-      g.find(_._2.keys.size > 1).map { case (start, _) =>
-        go(start, g, getFullWeights(start, g))
-      }.getOrElse {
-        go(g.keys.head, g, getFullWeights(g.keys.head, g))
-      }
+      calcutaleMinRouteWeight(g)
     }
 
     def main(args: Array[String]): Unit = {
