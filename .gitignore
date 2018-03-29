@@ -1,5 +1,4 @@
-training.iml
-trainint-stuff.iml
+*.iml
 target
 temp
 .idea
