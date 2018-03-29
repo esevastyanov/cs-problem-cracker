@@ -9,56 +9,61 @@ object Jack_Goes_to_Rapture_2 extends App
 
   object Solution
   {
+
     import scala.collection.mutable
 
     type Graph = Array[mutable.ArrayBuffer[(Int, Int)]]
 
     def minMaxWeight(start: Int, end: Int, g: Graph): Int = {
-      implicit val _ = new Ordering[Distance] {
-        override def compare(x: Distance,y: Distance): Int = {
-          if (x.c == y.c) y.v - x.v else y.c - x.c
+      implicit val _ = new Ordering[VWeight]
+      {
+        override def compare(a: VWeight, y: VWeight): Int = {
+          if (a.w == y.w) y.v - a.v else y.w - a.w
         }
       }
-      val queue = mutable.PriorityQueue[Distance]()
-      val dMap = mutable.Map[Int, Distance]()
-      val dist = mutable.Map[Int, Distance](start -> new Distance(start, 0))
+      val weightsQueue = mutable.PriorityQueue[VWeight]()
+      val weightsMap = mutable.Map[Int, VWeight](start -> new VWeight(start, 0))
       g.indices.foreach { v =>
-        val vD = dist.getOrElseUpdate(v, new Distance(v, Int.MaxValue))
-        queue.enqueue(vD)
+        val vw = weightsMap.getOrElseUpdate(v, new VWeight(v, Int.MaxValue))
+        weightsQueue.enqueue(vw)
       }
-      while (queue.nonEmpty) {
-        val cD = {
-          var d = queue.dequeue()
-          while (!d.isActual && queue.nonEmpty) d = queue.dequeue()
-          if (!d.isActual) return dist(end).c
-          d
+
+      while (weightsQueue.nonEmpty) {
+        val cvw = {
+          var w = weightsQueue.dequeue()
+          while (w.isStale && weightsQueue.nonEmpty) {
+            w = weightsQueue.dequeue()
+          }
+          if (w.isStale) return weightsMap(end).w
+          w
         }
-        val cv = cD.v
-        val cc = cD.c
-        if (cv == end) return cc
-        g(cv).foreach { case (v, c) =>
-          val alt = math.max(cc, c)
-          val vD = dist(v)
-          if (alt < vD.c) {
-            vD.isActual = false
-            val newVD = new Distance(v, alt)
-            dist(v) = newVD
-            queue.enqueue(newVD)
+        val cv = cvw.v
+        val cw = cvw.w
+        if (cv == end) return cw
+        g(cv).foreach { case (v, w) =>
+          val alt = math.max(cw, w)
+          val vw = weightsMap(v)
+          if (alt < vw.w) {
+            vw.isStale = true
+            val _vw = new VWeight(v, alt)
+            weightsMap(v) = _vw
+            weightsQueue.enqueue(_vw)
           }
         }
       }
-      dist(end).c
+
+      weightsMap(end).w
     }
 
     def main(args: Array[String]): Unit = {
-      val sc = new Reader
+      val sc = new FastReader
       val n = sc.nextInt()
       val e = sc.nextInt()
       val g: Graph = Array.fill(n)(mutable.ArrayBuffer[(Int, Int)]())
       (1 to e).foreach { _ =>
         val (i, j, w) = (sc.nextInt(), sc.nextInt(), sc.nextInt())
-        g(i-1).append(j-1 -> w)
-        g(j-1).append(i-1 -> w)
+        g(i - 1).append(j - 1 -> w)
+        g(j - 1).append(i - 1 -> w)
       }
       val res = minMaxWeight(0, n - 1, g)
       if (res == Int.MaxValue) {
@@ -68,9 +73,9 @@ object Jack_Goes_to_Rapture_2 extends App
       }
     }
 
-    class Distance(val v: Int, val c: Int, var isActual: Boolean = true)
+    class VWeight(val v: Int, val w: Int, var isStale: Boolean = false)
 
-    class Reader()
+    class FastReader()
     {
 
       import java.io.DataInputStream
@@ -114,6 +119,7 @@ object Jack_Goes_to_Rapture_2 extends App
         din.close()
       }
     }
+
   }
 
 }
