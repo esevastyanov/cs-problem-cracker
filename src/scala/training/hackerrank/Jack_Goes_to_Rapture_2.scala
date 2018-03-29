@@ -59,28 +59,40 @@ object Jack_Goes_to_Rapture_2 extends App
     def minMaxWeight(start: Int, end: Int, g: Graph): Int = {
       removeUnusedLeaves(g, Set(start, end))
       removeIntermediateNodes(g, Set(start, end))
-      implicit val _ = new Ordering[(Int, Int)] {
-        override def compare(x: (Int, Int), y: (Int, Int)): Int = {
-          if (x._2 - y._2 == 0) x._1 - y._1 else x._2 - y._2
+      implicit val _ = new Ordering[Distance] {
+        override def compare(x: Distance,y: Distance): Int = {
+          if (x.c == y.c) y.v - x.v else y.c - x.c
         }
       }
-      val s = mutable.SortedSet[(Int, Int)]()
-      val dist = mutable.Map[Int, Int](start -> 0).withDefaultValue(Int.MaxValue)
-      g.keys.foreach { v => s.add((v, dist(v)))}
-      while (s.nonEmpty) {
-        val (u, ud) = s.head
-        s.remove((u, ud))
-        if (u == end) return ud
-        g(u).foreach { case (v, vd) =>
-          val alt = math.max(dist(u), vd)
-          if (alt < dist(v)) {
-            s.remove((v, dist(v)))
-            dist(v) = alt
-            s.add((v, alt))
+      val queue = mutable.PriorityQueue[Distance]()
+      val dMap = mutable.Map[Int, Distance]()
+      val dist = mutable.Map[Int, Distance](start -> new Distance(start, 0))
+      g.keys.foreach { v =>
+        val vD = dist.getOrElseUpdate(v, new Distance(v, Int.MaxValue))
+        queue.enqueue(vD)
+      }
+      while (queue.nonEmpty) {
+        val cD = {
+          var d = queue.dequeue()
+          while (!d.isActual && queue.nonEmpty) d = queue.dequeue()
+          if (!d.isActual) return dist(end).c
+          d
+        }
+        val cv = cD.v
+        val cc = cD.c
+        if (cv == end) return cc
+        g(cv).foreach { case (v, c) =>
+          val alt = math.max(cc, c)
+          val vD = dist(v)
+          if (alt < vD.c) {
+            vD.isActual = false
+            val newVD = new Distance(v, alt)
+            dist(v) = newVD
+            queue.enqueue(newVD)
           }
         }
       }
-      dist(end)
+      dist(end).c
     }
 
     def main(args: Array[String]): Unit = {
@@ -101,6 +113,8 @@ object Jack_Goes_to_Rapture_2 extends App
         println(res)
       }
     }
+
+    class Distance(val v: Int, val c: Int, var isActual: Boolean = true)
 
     class Reader()
     {
