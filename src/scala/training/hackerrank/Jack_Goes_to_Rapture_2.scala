@@ -11,54 +11,9 @@ object Jack_Goes_to_Rapture_2 extends App
   {
     import scala.collection.mutable
 
-    type Graph = mutable.Map[Int, mutable.Map[Int, Int]]
-
-    private def removeUnusedLeaves(g: Graph, used: Set[Int]): Unit = {
-      val removed = mutable.ArrayBuffer[Int]()
-
-      def _do(toCheck: scala.collection.Set[Int]): Unit = {
-        val nextToCheck = mutable.Set[Int]()
-        (toCheck -- used).foreach { i =>
-          val ns = g(i).keys
-          val isLeaf = ns.size == 1
-          if (isLeaf) {
-            val nb = ns.head
-            g(nb) -= i
-            removed += i
-            nextToCheck += nb
-          }
-        }
-        if (nextToCheck.nonEmpty) _do(nextToCheck)
-      }
-
-      _do(g.keySet)
-      removed.foreach(g.remove)
-    }
-
-    private def removeIntermediateNodes(g: Graph, except: Set[Int]): Unit = {
-      val removed = mutable.ArrayBuffer[Int]()
-      (g.keySet -- except).foreach { i =>
-        val ns = g(i).keys
-        if (ns.size == 2) {
-          val na = ns.head
-          val nb = ns.last
-          if (na != nb) {
-            val w = math.min(g(na).getOrElse(nb, Int.MaxValue), math.max(g(na)(i), g(i)(nb)))
-            g(na)(nb) = w
-            g(nb)(na) = w
-          }
-          g(na) -= i
-          g(nb) -= i
-          g(i) = mutable.Map.empty[Int, Int]
-          removed += i
-        }
-      }
-      removed.foreach(g.remove)
-    }
+    type Graph = Array[mutable.ArrayBuffer[(Int, Int)]]
 
     def minMaxWeight(start: Int, end: Int, g: Graph): Int = {
-      removeUnusedLeaves(g, Set(start, end))
-      removeIntermediateNodes(g, Set(start, end))
       implicit val _ = new Ordering[Distance] {
         override def compare(x: Distance,y: Distance): Int = {
           if (x.c == y.c) y.v - x.v else y.c - x.c
@@ -67,7 +22,7 @@ object Jack_Goes_to_Rapture_2 extends App
       val queue = mutable.PriorityQueue[Distance]()
       val dMap = mutable.Map[Int, Distance]()
       val dist = mutable.Map[Int, Distance](start -> new Distance(start, 0))
-      g.keys.foreach { v =>
+      g.indices.foreach { v =>
         val vD = dist.getOrElseUpdate(v, new Distance(v, Int.MaxValue))
         queue.enqueue(vD)
       }
@@ -99,14 +54,13 @@ object Jack_Goes_to_Rapture_2 extends App
       val sc = new Reader
       val n = sc.nextInt()
       val e = sc.nextInt()
-      val g = mutable.Map[Int, mutable.Map[Int, Int]]()
-      (1 to n).foreach(g += _ -> mutable.Map())
+      val g: Graph = Array.fill(n)(mutable.ArrayBuffer[(Int, Int)]())
       (1 to e).foreach { _ =>
         val (i, j, w) = (sc.nextInt(), sc.nextInt(), sc.nextInt())
-        g(i)(j) = w
-        g(j)(i) = w
+        g(i-1).append(j-1 -> w)
+        g(j-1).append(i-1 -> w)
       }
-      val res = minMaxWeight(1, n, g)
+      val res = minMaxWeight(0, n - 1, g)
       if (res == Int.MaxValue) {
         println("NO PATH EXISTS")
       } else {
