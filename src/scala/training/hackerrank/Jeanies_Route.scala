@@ -55,7 +55,7 @@ object Jeanies_Route extends App
       removed.foreach(g.remove)
     }
 
-    private def calcutaleMinRouteWeight(g: Graph): Int = {
+    private def calculateMinRouteWeight(g: Graph): Int = {
       var maxRouteWeight = 0
       var totalWeight = 0
       val weights = mutable.Map[Int, Seq[Int]]().withDefaultValue(Seq(0))
@@ -65,11 +65,9 @@ object Jeanies_Route extends App
       def accumulateAndRemove(c: Int): Unit = {
         if (g(c).isEmpty) return
         val (p, wc) = g(c).head
-        totalWeight += wc
-        val wcs = weights(c)
-        val wps = weights(p)
-        val wrs = Seq(wps.max, wcs.map(_ + wc).max)
+        val wrs = Seq(weights(p).max, weights(c).map(_ + wc).max)
         maxRouteWeight = math.max(maxRouteWeight, wrs.sum)
+        totalWeight += wc
         weights(p) = wrs
         g -= c
         g(p) -= c
@@ -91,7 +89,7 @@ object Jeanies_Route extends App
       val lettersSet = letters.toSet
       removeUnusedLeaves(lettersSet, g)
       removeIntermediateNodes(g)
-      calcutaleMinRouteWeight(g)
+      calculateMinRouteWeight(g)
     }
 
     def main(args: Array[String]): Unit = {
