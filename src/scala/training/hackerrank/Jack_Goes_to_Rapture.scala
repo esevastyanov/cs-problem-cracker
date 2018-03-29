@@ -9,92 +9,63 @@ object Jack_Goes_to_Rapture extends App
 
   object Solution
   {
+
     import scala.collection.mutable
 
-    type Graph = mutable.Map[Int, mutable.Map[Int, Int]]
-
-    private def removeUnusedLeaves(g: Graph, used: Set[Int]): Unit = {
-      val removed = mutable.ArrayBuffer[Int]()
-
-      def _do(toCheck: scala.collection.Set[Int]): Unit = {
-        val nextToCheck = mutable.Set[Int]()
-        (toCheck -- used).foreach { i =>
-          val ns = g(i).keys
-          val isLeaf = ns.size == 1
-          if (isLeaf) {
-            val nb = ns.head
-            g(nb) -= i
-            removed += i
-            nextToCheck += nb
-          }
-        }
-        if (nextToCheck.nonEmpty) _do(nextToCheck)
-      }
-
-      _do(g.keySet)
-      removed.foreach(g.remove)
-    }
-
-    private def removeIntermediateNodes(g: Graph, except: Set[Int]): Unit = {
-      val removed = mutable.ArrayBuffer[Int]()
-      (g.keySet -- except).foreach { i =>
-        val ns = g(i).keys
-        if (ns.size == 2) {
-          val na = ns.head
-          val nb = ns.last
-          if (na != nb) {
-            val w = math.min(g(na).getOrElse(nb, Int.MaxValue), math.max(g(na)(i), g(i)(nb)))
-            g(na)(nb) = w
-            g(nb)(na) = w
-          }
-          g(na) -= i
-          g(nb) -= i
-          g(i) = mutable.Map.empty[Int, Int]
-          removed += i
-        }
-      }
-      removed.foreach(g.remove)
-    }
+    type Graph = Array[mutable.ArrayBuffer[(Int, Int)]]
 
     def minMaxWeight(start: Int, end: Int, g: Graph): Int = {
-      removeUnusedLeaves(g, Set(start, end))
-      removeIntermediateNodes(g, Set(start, end))
-      val sortedG = mutable.Map[Int, Seq[(Int, Int)]]()
+      implicit val _ = new Ordering[VWeight]
+      {
+        override def compare(a: VWeight, y: VWeight): Int = {
+          if (a.w == y.w) y.v - a.v else y.w - a.w
+        }
+      }
+      val weightsQueue = mutable.PriorityQueue[VWeight]()
+      val weightsMap = mutable.Map[Int, VWeight](start -> new VWeight(start, 0))
+      g.indices.foreach { v =>
+        val vw = weightsMap.getOrElseUpdate(v, new VWeight(v, Int.MaxValue))
+        weightsQueue.enqueue(vw)
+      }
 
-      var minMax = Int.MaxValue
-      val minWeightMap = mutable.Map[Int, Int]()
-
-      def _do(node: Int, weight: Int): Unit = {
-        minWeightMap(node) = weight
-        if (node == end) {
-          if (minMax > weight) minMax = weight
-        } else {
-          if (!sortedG.contains(node)) sortedG(node) = g(node).toSeq.sortBy(_._2)
-          sortedG(node).foreach { case (nb, w) =>
-            val mmw = math.max(w, weight)
-            if (mmw < minMax && minWeightMap.get(nb).forall(_ > mmw)) {
-              _do(nb, mmw)
-            }
+      while (weightsQueue.nonEmpty) {
+        val cvw = {
+          var w = weightsQueue.dequeue()
+          while (w.isStale && weightsQueue.nonEmpty) {
+            w = weightsQueue.dequeue()
+          }
+          if (w.isStale) return weightsMap(end).w
+          w
+        }
+        val cv = cvw.v
+        val cw = cvw.w
+        if (cv == end) return cw
+        g(cv).foreach { case (v, w) =>
+          val alt = math.max(cw, w)
+          val vw = weightsMap(v)
+          if (alt < vw.w) {
+            vw.isStale = true
+            val _vw = new VWeight(v, alt)
+            weightsMap(v) = _vw
+            weightsQueue.enqueue(_vw)
           }
         }
       }
 
-      _do(1, 0)
-      minMax
+      weightsMap(end).w
     }
 
     def main(args: Array[String]): Unit = {
-      val sc = new Reader
+      val sc = new FastReader
       val n = sc.nextInt()
       val e = sc.nextInt()
-      val g = mutable.Map[Int, mutable.Map[Int, Int]]()
-      (1 to n).foreach(g += _ -> mutable.Map())
+      val g: Graph = Array.fill(n)(mutable.ArrayBuffer[(Int, Int)]())
       (1 to e).foreach { _ =>
         val (i, j, w) = (sc.nextInt(), sc.nextInt(), sc.nextInt())
-        g(i)(j) = w
-        g(j)(i) = w
+        g(i - 1).append(j - 1 -> w)
+        g(j - 1).append(i - 1 -> w)
       }
-      val res = minMaxWeight(1, n, g)
+      val res = minMaxWeight(0, n - 1, g)
       if (res == Int.MaxValue) {
         println("NO PATH EXISTS")
       } else {
@@ -102,7 +73,9 @@ object Jack_Goes_to_Rapture extends App
       }
     }
 
-    class Reader()
+    class VWeight(val v: Int, val w: Int, var isStale: Boolean = false)
+
+    class FastReader()
     {
 
       import java.io.DataInputStream
@@ -126,8 +99,7 @@ object Jack_Goes_to_Rapture extends App
           ret = ret * 10 + c - '0'
           c = read
         } while (c >= '0' && c <= '9')
-        if (neg) return -ret
-        ret
+        if (neg) -ret else ret
       }
 
       private def fillBuffer(): Unit = {
@@ -147,6 +119,7 @@ object Jack_Goes_to_Rapture extends App
         din.close()
       }
     }
+
   }
 
 }
