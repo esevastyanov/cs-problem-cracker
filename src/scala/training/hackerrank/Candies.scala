@@ -1,5 +1,8 @@
 package training.hackerrank
 
+/**
+  * https://www.hackerrank.com/challenges/candies/problem
+  */
 object Candies
 {
 

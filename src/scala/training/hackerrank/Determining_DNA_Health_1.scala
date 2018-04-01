@@ -1,9 +1,13 @@
 package training.hackerrank
 
+/**
+  * https://www.hackerrank.com/challenges/determining-dna-health/problem
+  */
 object Determining_DNA_Health_1 extends App
 {
   Solution.main(args)
 
+  // TODO: Complete!
   object Solution
   {
 

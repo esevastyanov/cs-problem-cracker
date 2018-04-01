@@ -1,5 +1,8 @@
 package training.hackerrank
 
+/**
+  * https://www.hackerrank.com/challenges/ctci-balanced-brackets/problem
+  */
 object Balanced_Brackets extends App
 {
   Solution.main(args)

@@ -1,5 +1,8 @@
 package training.hackerrank
 
+/**
+  * https://www.hackerrank.com/challenges/sherlock-and-valid-string/problem
+  */
 object Sherlock_Valid_String extends App
 {
   Solution.main(args)

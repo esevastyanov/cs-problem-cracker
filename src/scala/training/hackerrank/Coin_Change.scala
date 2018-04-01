@@ -1,5 +1,8 @@
 package training.hackerrank
 
+/**
+  * https://www.hackerrank.com/challenges/ctci-coin-change/problem
+  */
 object Coin_Change extends App
 {
 

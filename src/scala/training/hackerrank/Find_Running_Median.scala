@@ -1,5 +1,8 @@
 package training.hackerrank
 
+/**
+  * https://www.hackerrank.com/challenges/ctci-find-the-running-median/problem
+  */
 object Find_Running_Median extends App
 {
   Solution.main(args)

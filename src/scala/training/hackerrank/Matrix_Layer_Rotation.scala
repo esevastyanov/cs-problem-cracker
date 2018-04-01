@@ -1,5 +1,8 @@
 package training.hackerrank
 
+/**
+  * https://www.hackerrank.com/challenges/matrix-rotation-algo/problem
+  */
 object Matrix_Layer_Rotation extends App
 {
   Solution.main(args)

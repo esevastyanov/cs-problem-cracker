@@ -1,4 +1,4 @@
-package scala
+package training
 
 /**
   * https://habrahabr.ru/post/200190/
