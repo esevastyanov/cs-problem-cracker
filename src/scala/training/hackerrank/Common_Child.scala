@@ -1,7 +1,5 @@
 package training.hackerrank
 
-import scala.collection.mutable
-
 /**
   * https://www.hackerrank.com/challenges/common-child/problem
   */
@@ -11,6 +9,8 @@ object Common_Child extends App
 
   object Solution
   {
+
+    import scala.collection.mutable
 
     def maxChildLength(s1: String, s2: String): Int = {
       val (sMinL, sMaxL) = if (s1.length < s2.length) (s1, s2) else (s2, s1)
