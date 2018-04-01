@@ -10,26 +10,20 @@ object Common_Child extends App
   object Solution
   {
 
-    import scala.collection.mutable
-
     def maxChildLength(s1: String, s2: String): Int = {
-      val (sMinL, sMaxL) = if (s1.length < s2.length) (s1, s2) else (s2, s1)
-      val charsMap = Array.fill('Z' - 'A' + 1)(mutable.ArrayBuffer[Int]())
-      (0 until sMaxL.length).foreach { i => charsMap('Z' - sMaxL(i)) += i }
-
-      def _count(i: Int, n: Int): Int = {
-        if (i >= sMinL.length) {
-          0
-        } else {
-          val c = sMinL(i)
-          charsMap('Z' - c)
-            .find(_ > n)
-            .map(nn => math.max(1 + _count(i + 1, nn), _count(i + 1, n)))
-            .getOrElse(_count(i + 1, n))
+      val r = Array.fill(s1.length)(Array.fill(s2.length)(0))
+      r.indices.foreach { i =>
+        r(i).indices.foreach { j =>
+          r(i)(j) = {
+            val eq = if (s1(i) == s2(j)) 1 else 0
+            val i_1 = if (i > 0) r(i - 1)(j) else 0
+            val j_1 = if (j > 0) r(i)(j - 1) else 0
+            val i_j_1 = if (i > 0 && j > 0) r(i-1)(j-1) else 0
+            math.max(math.max(i_1, j_1), i_j_1 + eq)
+          }
         }
       }
-
-      _count(0, -1)
+      r(s1.length - 1)(s2.length - 1)
     }
 
     def main(args: Array[String]): Unit = {
