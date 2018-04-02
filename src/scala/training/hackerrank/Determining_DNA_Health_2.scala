@@ -19,85 +19,29 @@ object Determining_DNA_Health_2 extends App
       val n = sc.nextInt()
       val genes = time("fill genes")(ArrayBuffer.fill(n)(sc.next()))
       val healths = time("fill healthes")(ArrayBuffer.fill(n)(sc.nextInt()))
-      val mGenes: mutable.Map[String, ArrayBuffer[Gene]] = time("mGenes...") {
-        val m = mutable.Map[String, ArrayBuffer[Gene]]()
-        genes.indices.foreach { i =>
-          val g = genes(i)
-          val gs = m.getOrElseUpdate(g, ArrayBuffer())
-          gs.append(Gene(g, i, healths(i) + gs.lastOption.fold(0L)(_.health)))
-        }
-        m
-      }
+
       val ac = time("automaton...") {
         val atmtn = new Automaton
-        time("automaton generation")(mGenes.keys.foreach(atmtn.addWord))
+        for (i <- 0 until n) {
+          val gene = genes(i)
+          val health = healths(i)
+          atmtn.addWord(gene, Gene(gene, i, health))
+        }
         time("automaton fail transitions")(atmtn.setFailTransitions())
         atmtn
       }
+
       var min = Long.MaxValue
       var max = Long.MinValue
       val s = sc.nextInt()
       for (_ <- 1 to s) {
         val first, last = sc.nextInt()
-        val d = time("fill d")(sc.next())
-        var score = 0L
-        time(s"search ${d(0)}...")(
-          ac.search(d).groupBy(identity).foreach { case (w, gss) =>
-            val gGenes = mGenes(w)
-            val gFirst = math.max(gGenes.head.idx, first)
-            val gLast = math.min(gGenes.last.idx, last)
-            if (gFirst <= gLast) {
-              val minSum = findFirstHealth(gFirst, gGenes).fold(0L)(_.health)
-              val maxSum = findLastHealth(gLast, gGenes).fold(0L)(_.health)
-              val _s = gss.size * (maxSum - minSum)
-              score += _s
-              //            println(s"$d $w ${_s}")
-            }
-          }
-        )
+        val d = sc.next()
+        val score = ac.search(d, first, last)
         min = math.min(min, score)
         max = math.max(max, score)
-        //        println(s"$d $score")
       }
       println(s"$min $max")
-    }
-
-    def findFirstHealth(start: Int, ss: mutable.ArrayBuffer[Gene]): Option[Gene] = {
-      if (ss(0).idx >= start) return None
-      if (ss(ss.length - 1).idx < start) return None
-      var l = 0
-      var r = ss.length - 1
-      var i = 0
-      while (l < r) {
-        i = (r + l) / 2
-        if (ss(i).idx > start) {
-          r = i - 1
-        } else if (ss(i).idx < start && ss(i + 1).idx < start) {
-          l = i + 1
-        } else if (ss(i).idx < start && ss(i + 1).idx >= start) {
-          return Some(ss(i))
-        } else if (ss(i).idx == start) return Some(ss(i - 1))
-      }
-      Some(ss(l))
-    }
-
-    def findLastHealth(last: Int, ss: mutable.ArrayBuffer[Gene]): Option[Gene] = {
-      if (ss(0).idx > last) return None
-      if (ss(ss.length - 1).idx <= last) return Some(ss(ss.length - 1))
-      var l = 0
-      var r = ss.length - 1
-      var i = 0
-      while (l < r) {
-        i = (r + l) / 2
-        if (ss(i).idx > last) {
-          r = i - 1
-        } else if (ss(i).idx < last && ss(i + 1).idx <= last) {
-          l = i + 1
-        } else {
-          return Some(ss(i))
-        }
-      }
-      Some(ss(l))
     }
 
     val ENV = "PROD"
@@ -112,104 +56,186 @@ object Determining_DNA_Health_2 extends App
       r
     }
 
-    case class Gene(gene: String, idx: Int, var health: Long = 0)
+    case class Gene(gene: String, idx: Int, var health: Long = 0L)
+
+    object Gene
+    {
+      implicit val ordering: Ordering[Gene] = new Ordering[Gene]
+      {
+        override def compare(x: Gene, y: Gene): Int = x.idx - y.idx
+      }
+    }
 
     class Automaton
     {
+      val root: Node = new Node(failure = null)
+      root.failure = root
 
-      class Node(
-        val next: Array[Node] = Array.fill('z'-'a'+1)(null),
-        val output: mutable.Set[String] = mutable.Set.empty,
-        var failure: Node = root
-      )
-
-      val root: Node = new Node()
-      val empty: Node = null
-
-      private def nextState(node: Node, char: Char): Option[Node] = {
-        Option(node.next('z' - char))
-      }
-
-      def addWord(word: String): Unit = {
+      def addWord(word: String, v: Gene): Unit = {
         var currentNode: Node = root
         for (i <- 0 until word.length) {
           val c = word(i)
-          currentNode = nextState(currentNode, c).getOrElse {
-            val next = new Node()
-            currentNode.next('z' - c) = next
+          currentNode = currentNode.getNext(c).getOrElse {
+            val next = new Node(failure = root)
+            currentNode.setNext(c, next)
             next
           }
         }
-        currentNode.output += word
+        currentNode.addOutput(v)
       }
 
       // set failure function
       def setFailTransitions(): Unit = {
         val queue = mutable.Queue[Node]()
         // set failure for node whose depth=1
-        root.next.foreach { s =>
-          if (s != empty) queue += s
-        }
+        root.getNextNodes.foreach(queue += _)
         while (queue.nonEmpty) {
           val rNode = queue.dequeue()
           for (a <- 'a' to 'z') {
-            nextState(rNode, a).foreach {s =>
+            rNode.getNext(a).foreach {s =>
               queue += s
               var fNextNode = rNode.failure
-              while (nextState(fNextNode, a).isEmpty && fNextNode != root) {
+              while (fNextNode.getNext(a).isEmpty && fNextNode != root) {
                 fNextNode = fNextNode.failure
               }
               val goto_a: Node =
-                if (fNextNode == root && nextState(fNextNode, a).isEmpty) {
+                if (fNextNode == root && fNextNode.getNext(a).isEmpty) {
                   root
                 } else {
-                  nextState(fNextNode, a).getOrElse(root)
+                  fNextNode.getNext(a).getOrElse(root)
                 }
               s.failure = goto_a
-              s.output ++= s.failure.output
+              s.merge(s.failure)
             }
           }
         }
       }
 
-      def search(str: String): mutable.ArrayBuffer[String] = {
-        val resultBuffer: mutable.ArrayBuffer[String] = mutable.ArrayBuffer()
+      def search(str: String, first: Int, last: Int): Long = {
+        var sum = 0L
         var node = root
         for (i <- 0 until str.length) {
           val c = str(i)
-          var next = nextState(node, c)
+          var next = node.getNext(c)
           while (next.isEmpty && node != root) {
             node = node.failure
-            next = nextState(node, c)
+            next = node.getNext(c)
           }
           node = if (node == root && next.isEmpty) root else next.get
-          if (node.output.nonEmpty) {
-            node.output.foreach(resultBuffer.append(_))
+          sum += node.getSum(first, last)
+        }
+        sum
+      }
+    }
+
+    class Node(
+      var failure: Node,
+      val next: Array[Node] = Array.fill('z'-'a'+1)(null),
+      var output: ArrayBuffer[Gene] = ArrayBuffer[Gene](),
+      var genes: ArrayBuffer[Gene] = null
+    ) {
+      def setNext(c: Char, n: Node): Unit = next('z' - c) = n
+      def getNext(c:Char): Option[Node] = Option(next('z' - c))
+      def getNextNodes: Seq[Node] = next.view.filterNot(_ == null)
+
+      def getOutput: ArrayBuffer[Gene] = output
+      def isOutputEmpty: Boolean = output.isEmpty
+      def addOutput(v: Gene): Unit = output += v
+      def merge(n: Node): Unit = {
+        val res = ArrayBuffer[Gene]()
+        var i, j = 0
+        while (i < output.length || j < n.getOutput.length) {
+          if (i < output.length && j < n.getOutput.length) {
+            val o_i = output(i)
+            val o_j = n.getOutput(j)
+            if (Gene.ordering.lt(o_i, o_j)) {
+//              if (Gene.ordering.equiv(o_i, o_j)) j += 1
+              res += o_i
+              i += 1
+            } else {
+              res += o_j
+              j += 1
+            }
+          } else if (i < output.length) {
+            res += output(i)
+            i += 1
+          } else {
+            res += n.getOutput(j)
+            j += 1
           }
         }
-        resultBuffer
+        output = res
       }
 
-      /*
-            // search words
-            def search(str: String): mutable.ArrayBuffer[(String, T)] = {
-              val resultBuffer: mutable.ArrayBuffer[(String, T)] = mutable.ArrayBuffer()
-              var node = trie(0)
-              for (i <- 0 until str.length) {
-                val c = str(i)
-                var next = nextState(node, c)
-                while (next == -1 && node.state != 0) {
-                  node = trie(node.failure)
-                  next = nextState(node, c)
-                }
-                node = if (node.state == 0 && next == -1) trie(0) else trie(next)
-                if (node.output.nonEmpty) {
-                  node.output.foreach(resultBuffer.append(_))
-                }
-              }
-              resultBuffer
-            }
-      */
+      def getSum(first: Int, last: Int): Long = {
+        summarizeScores()
+/*
+        var sum = 0L
+        output.foreach(g =>
+          if (first <= g.idx && g.idx <= last) sum += g.health
+        )
+        sum
+*/
+        if (genes.isEmpty) 0
+        else {
+          val gFirst = math.max(genes.head.idx, first)
+          val gLast = math.min(genes.last.idx, last)
+          if (gFirst <= gLast) {
+            val minSum = findFirstHealth(gFirst).fold(0L)(_.health)
+            val maxSum = findLastHealth(gLast).fold(0L)(_.health)
+            maxSum - minSum
+          } else 0
+        }
+      }
+
+      private def summarizeScores(): Unit = {
+        if (genes != null) return
+        genes = new ArrayBuffer[Gene](output.length)
+        var sum = 0L
+        output.indices.foreach { i =>
+          val g = output(i)
+          sum += g.health
+          genes += g.copy(health = sum)
+        }
+      }
+
+      private def findFirstHealth(start: Int): Option[Gene] = {
+        if (genes(0).idx >= start) return None
+        if (genes(genes.length - 1).idx < start) return None
+        var l = 0
+        var r = genes.length - 1
+        var i = 0
+        while (l < r) {
+          i = (r + l) / 2
+          if (genes(i).idx > start) {
+            r = i - 1
+          } else if (genes(i).idx < start && genes(i + 1).idx < start) {
+            l = i + 1
+          } else if (genes(i).idx < start && genes(i + 1).idx >= start) {
+            return Some(genes(i))
+          } else if (genes(i).idx == start) return Some(genes(i - 1))
+        }
+        Some(genes(l))
+      }
+
+      private def findLastHealth(last: Int): Option[Gene] = {
+        if (genes(0).idx > last) return None
+        if (genes(genes.length - 1).idx <= last) return Some(genes(genes.length - 1))
+        var l = 0
+        var r = genes.length - 1
+        var i = 0
+        while (l < r) {
+          i = (r + l) / 2
+          if (genes(i).idx > last) {
+            r = i - 1
+          } else if (genes(i).idx < last && genes(i + 1).idx <= last) {
+            l = i + 1
+          } else {
+            return Some(genes(i))
+          }
+        }
+        Some(genes(l))
+      }
     }
 
     class FastReader()
@@ -241,9 +267,11 @@ object Determining_DNA_Health_2 extends App
       }
 
       def next(): String = {
-        val sb = new mutable.StringBuilder()
+        val sb = new StringBuilder()
         var c = read
-        while (c != -1 && (c == '\n' || c == ' ' || c == '\t')) c = read
+        while (c != -1 && (c == '\n' || c == ' ' || c == '\t')) {
+          c = read
+        }
         while (c != -1 && c != '\n' && c != ' ' && c != '\t') {
           sb.append(c.toChar)
           c = read
