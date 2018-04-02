@@ -15,11 +15,11 @@ object Determining_DNA_Health_2 extends App
     import scala.collection.mutable.ArrayBuffer
 
     def main(args: Array[String]): Unit = {
-      val sc = new java.util.Scanner(System.in)
+      val sc = new FastReader
       val n = sc.nextInt()
       val genes = time("fill genes")(ArrayBuffer.fill(n)(sc.next()))
       val healths = time("fill healthes")(ArrayBuffer.fill(n)(sc.nextInt()))
-      val mGenes: mutable.Map[String, ArrayBuffer[Gene]] = time("mGenes..."){
+      val mGenes: mutable.Map[String, ArrayBuffer[Gene]] = time("mGenes...") {
         val m = mutable.Map[String, ArrayBuffer[Gene]]()
         genes.indices.foreach { i =>
           val g = genes(i)
@@ -28,7 +28,7 @@ object Determining_DNA_Health_2 extends App
         }
         m
       }
-      val ac = time("automaton..."){
+      val ac = time("automaton...") {
         val atmtn = new Automaton
         time("automaton generation")(mGenes.keys.foreach(atmtn.addWord))
         time("automaton fail transitions")(atmtn.setFailTransitions())
@@ -37,7 +37,7 @@ object Determining_DNA_Health_2 extends App
       var min = Long.MaxValue
       var max = Long.MinValue
       val s = sc.nextInt()
-      for (i <- 1 to s) {
+      for (_ <- 1 to s) {
         val first, last = sc.nextInt()
         val d = time("fill d")(sc.next())
         var score = 0L
@@ -57,7 +57,7 @@ object Determining_DNA_Health_2 extends App
         )
         min = math.min(min, score)
         max = math.max(max, score)
-//        println(s"$d $score")
+        //        println(s"$d $score")
       }
       println(s"$min $max")
     }
@@ -100,37 +100,43 @@ object Determining_DNA_Health_2 extends App
       Some(ss(l))
     }
 
+    val ENV = "PROD"
+
     def time[T](s: String)(f: => T): T = {
       val start = System.currentTimeMillis()
       val r = f
       val end = System.currentTimeMillis()
-      println(s + ":" + (end - start) + " ms")
+      if (ENV != "PROD") {
+        println(s + ":" + (end - start) + " ms")
+      }
       r
     }
 
     case class Gene(gene: String, idx: Int, var health: Long = 0)
 
-    class Automaton {
-
-      val root = new Node()
+    class Automaton
+    {
 
       class Node(
-        val next: mutable.Map[Char, Node] = mutable.Map.empty,
+        val next: Array[Node] = Array.fill('z'-'a'+1)(null),
         val output: mutable.Set[String] = mutable.Set.empty,
         var failure: Node = root
       )
 
+      val root: Node = new Node()
+      val empty: Node = null
+
       private def nextState(node: Node, char: Char): Option[Node] = {
-        node.next.get(char)
+        Option(node.next('z' - char))
       }
 
       def addWord(word: String): Unit = {
-        var currentNode = root
+        var currentNode: Node = root
         for (i <- 0 until word.length) {
           val c = word(i)
           currentNode = nextState(currentNode, c).getOrElse {
             val next = new Node()
-            currentNode.next += (c -> next)
+            currentNode.next('z' - c) = next
             next
           }
         }
@@ -141,25 +147,27 @@ object Determining_DNA_Health_2 extends App
       def setFailTransitions(): Unit = {
         val queue = mutable.Queue[Node]()
         // set failure for node whose depth=1
-        root.next.foreach { case (_, s) =>
-          queue += s
+        root.next.foreach { s =>
+          if (s != empty) queue += s
         }
         while (queue.nonEmpty) {
           val rNode = queue.dequeue()
-          rNode.next.foreach { case (a, s) =>
-            queue += s
-            var fNextNode = rNode.failure
-            while (nextState(fNextNode, a).isEmpty && fNextNode != root) {
-              fNextNode = fNextNode.failure
-            }
-            val goto_a: Node =
-              if (fNextNode == root && nextState(fNextNode, a).isEmpty) {
-                root
-              } else {
-                fNextNode.next.getOrElse(a, root)
+          for (a <- 'a' to 'z') {
+            nextState(rNode, a).foreach {s =>
+              queue += s
+              var fNextNode = rNode.failure
+              while (nextState(fNextNode, a).isEmpty && fNextNode != root) {
+                fNextNode = fNextNode.failure
               }
-            s.failure = goto_a
-            s.output ++= s.failure.output
+              val goto_a: Node =
+                if (fNextNode == root && nextState(fNextNode, a).isEmpty) {
+                  root
+                } else {
+                  nextState(fNextNode, a).getOrElse(root)
+                }
+              s.failure = goto_a
+              s.output ++= s.failure.output
+            }
           }
         }
       }
@@ -203,5 +211,65 @@ object Determining_DNA_Health_2 extends App
             }
       */
     }
+
+    class FastReader()
+    {
+
+      import java.io.DataInputStream
+
+      private val BUFFER_SIZE   = 1 << 16
+      private val din           = new DataInputStream(System.in)
+      private val buffer        = new Array[Byte](BUFFER_SIZE)
+      private var bufferPointer = 0
+      private var bytesRead     = 0
+
+
+      def nextInt(): Int = {
+        var ret = 0
+        var c = read
+        while (c <= ' ') {
+          c = read
+        }
+        val neg = c == '-'
+        if (neg) c = read
+        do {
+          ret = ret * 10 + c - '0'
+          c = read
+        } while (c >= '0' && c <= '9')
+        val res = if (neg) -ret else ret
+        res
+      }
+
+      def next(): String = {
+        val sb = new mutable.StringBuilder()
+        var c = read
+        while (c != -1 && (c == '\n' || c == ' ' || c == '\t')) c = read
+        while (c != -1 && c != '\n' && c != ' ' && c != '\t') {
+          sb.append(c.toChar)
+          c = read
+        }
+        val res = sb.mkString
+        res
+      }
+
+      private def fillBuffer(): Unit = {
+        bufferPointer = 0
+        bytesRead = din.read(buffer, bufferPointer, BUFFER_SIZE)
+        if (bytesRead == -1) buffer(0) = -1
+      }
+
+      private def read = {
+        if (bufferPointer == bytesRead) fillBuffer()
+        bufferPointer += 1
+        buffer(bufferPointer - 1)
+      }
+
+      def close(): Unit = {
+        if (din == null) return
+        din.close()
+      }
+    }
+
   }
+
 }

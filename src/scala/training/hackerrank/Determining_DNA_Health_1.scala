@@ -64,7 +64,7 @@ object Determining_DNA_Health_1 extends App
     }
 
     def main(args: Array[String]) {
-      val sc = new java.util.Scanner(System.in)
+      val sc = new FastReader
       val n = sc.nextInt()
       val mGenesCounter = mutable.Map[String, Int]().withDefaultValue(0)
       val genes: Array[Gene] = new Array(n)
@@ -149,6 +149,65 @@ object Determining_DNA_Health_1 extends App
       }
       println(s"$min $max")
     }
+
+    class FastReader()
+    {
+
+      import java.io.DataInputStream
+
+      private val BUFFER_SIZE   = 1 << 16
+      private val din           = new DataInputStream(System.in)
+      private val buffer        = new Array[Byte](BUFFER_SIZE)
+      private var bufferPointer = 0
+      private var bytesRead     = 0
+
+
+      def nextInt(): Int = {
+        var ret = 0
+        var c = read
+        while (c <= ' ') {
+          c = read
+        }
+        val neg = c == '-'
+        if (neg) c = read
+        do {
+          ret = ret * 10 + c - '0'
+          c = read
+        } while (c >= '0' && c <= '9')
+        val res = if (neg) -ret else ret
+        res
+      }
+
+      def next(): String = {
+        val sb = new mutable.StringBuilder()
+        var c = read
+        while (c != -1 && (c == '\n' || c == ' ' || c == '\t')) c = read
+        while (c != -1 && c != '\n' && c != ' ' && c != '\t') {
+          sb.append(c.toChar)
+          c = read
+        }
+        val res = sb.mkString
+        res
+      }
+
+      private def fillBuffer(): Unit = {
+        bufferPointer = 0
+        bytesRead = din.read(buffer, bufferPointer, BUFFER_SIZE)
+        if (bytesRead == -1) buffer(0) = -1
+      }
+
+      private def read = {
+        if (bufferPointer == bytesRead) fillBuffer()
+        bufferPointer += 1
+        buffer(bufferPointer - 1)
+      }
+
+      def close(): Unit = {
+        if (din == null) return
+        din.close()
+      }
+    }
+
   }
 
   def time[T](s: String)(f: => T): T = {
