@@ -1,4 +1,4 @@
-package training.hackerrank
+// package training.hackerrank
 
 /**
   * https://www.hackerrank.com/challenges/determining-dna-health/problem
@@ -22,10 +22,12 @@ object Determining_DNA_Health_2 extends App
 
       val ac = time("automaton...") {
         val atmtn = new Automaton
-        for (i <- 0 until n) {
-          val gene = genes(i)
-          val health = healths(i)
-          atmtn.addWord(gene, Gene(gene, i, health))
+        time("automaton adding words") {
+          for (i <- 0 until n) {
+            val gene = genes(i)
+            val health = healths(i)
+            atmtn.addWord(gene, Gene(i, health))
+          }
         }
         time("automaton fail transitions")(atmtn.setFailTransitions())
         atmtn
@@ -33,18 +35,20 @@ object Determining_DNA_Health_2 extends App
 
       var min = Long.MaxValue
       var max = Long.MinValue
-      val s = sc.nextInt()
-      for (_ <- 1 to s) {
-        val first, last = sc.nextInt()
-        val d = sc.next()
-        val score = ac.search(d, first, last)
-        min = math.min(min, score)
-        max = math.max(max, score)
+      time("searching") {
+        val s = sc.nextInt()
+        for (_ <- 1 to s) {
+          val first, last = sc.nextInt()
+          val d = sc.next()
+          val score = ac.search(d, first, last)
+          min = math.min(min, score)
+          max = math.max(max, score)
+        }
       }
       println(s"$min $max")
     }
 
-    val ENV = "PROD"
+    val ENV = "DEBUG"
 
     def time[T](s: String)(f: => T): T = {
       val start = System.currentTimeMillis()
@@ -56,7 +60,7 @@ object Determining_DNA_Health_2 extends App
       r
     }
 
-    case class Gene(gene: String, idx: Int, var health: Long = 0L)
+    case class Gene(idx: Int, var health: Long = 0L)
 
     object Gene
     {
@@ -76,7 +80,7 @@ object Determining_DNA_Health_2 extends App
         for (i <- 0 until word.length) {
           val c = word(i)
           currentNode = currentNode.getNext(c).getOrElse {
-            val next = new Node(failure = root)
+            val next = new Node(failure = root, char = c)
             currentNode.setNext(c, next)
             next
           }
@@ -91,22 +95,21 @@ object Determining_DNA_Health_2 extends App
         root.getNextNodes.foreach(queue += _)
         while (queue.nonEmpty) {
           val rNode = queue.dequeue()
-          for (a <- 'a' to 'z') {
-            rNode.getNext(a).foreach {s =>
-              queue += s
-              var fNextNode = rNode.failure
-              while (fNextNode.getNext(a).isEmpty && fNextNode != root) {
-                fNextNode = fNextNode.failure
-              }
-              val goto_a: Node =
-                if (fNextNode == root && fNextNode.getNext(a).isEmpty) {
-                  root
-                } else {
-                  fNextNode.getNext(a).getOrElse(root)
-                }
-              s.failure = goto_a
-              s.merge(s.failure)
+          rNode.getNextNodes.foreach { s =>
+            queue += s
+            val a = s.char
+            var fNextNode = rNode.failure
+            while (fNextNode.getNext(a).isEmpty && fNextNode != root) {
+              fNextNode = fNextNode.failure
             }
+            val goto_a: Node =
+              if (fNextNode == root && fNextNode.getNext(a).isEmpty) {
+                root
+              } else {
+                fNextNode.getNext(a).getOrElse(root)
+              }
+            s.failure = goto_a
+            s.merge(s.failure)
           }
         }
       }
@@ -130,72 +133,76 @@ object Determining_DNA_Health_2 extends App
 
     class Node(
       var failure: Node,
-      val next: Array[Node] = Array.fill('z'-'a'+1)(null),
-      var output: ArrayBuffer[Gene] = ArrayBuffer[Gene](),
-      var genes: ArrayBuffer[Gene] = null
-    ) {
-      def setNext(c: Char, n: Node): Unit = next('z' - c) = n
-      def getNext(c:Char): Option[Node] = Option(next('z' - c))
-      def getNextNodes: Seq[Node] = next.view.filterNot(_ == null)
+      val char: Char = Char.MinValue,
+      val nextNodes: Array[Node] = new Array[Node]('z' - 'a' + 1),
+      var output: List[Gene] = List[Gene](),
+      var genes: Array[Gene] = null
+    )
+    {
+      def setNext(c: Char, n: Node): Unit = nextNodes('z' - c) = n
 
-      def getOutput: ArrayBuffer[Gene] = output
-      def isOutputEmpty: Boolean = output.isEmpty
-      def addOutput(v: Gene): Unit = output += v
+      def getNext(c: Char): Option[Node] = Option(nextNodes('z' - c))
+
+      def getNextNodes: Iterable[Node] = nextNodes.view.filterNot(_ == null)
+
+      def getOutput: Seq[Gene] = output
+
+      def addOutput(v: Gene): Unit = output = output :+ v
+
       def merge(n: Node): Unit = {
-        val res = ArrayBuffer[Gene]()
-        var i, j = 0
-        while (i < output.length || j < n.getOutput.length) {
-          if (i < output.length && j < n.getOutput.length) {
-            val o_i = output(i)
-            val o_j = n.getOutput(j)
-            if (Gene.ordering.lt(o_i, o_j)) {
-//              if (Gene.ordering.equiv(o_i, o_j)) j += 1
-              res += o_i
-              i += 1
+        if (output.isEmpty) output = n.output
+        else if (n.output.isEmpty) output = output
+        else if (output.last.idx < n.output.head.idx) output = output ++ n.output
+        else if (n.output.last.idx < output.head.idx) output = n.output ++ output
+        else {
+          val res = mutable.ListBuffer[Gene]()
+          val i = output.iterator.buffered
+          val j = n.output.iterator.buffered
+          while (i.hasNext || j.hasNext) {
+            if (i.hasNext && j.hasNext) {
+              if (Gene.ordering.lt(i.head, j.head)) {
+                if (Gene.ordering.equiv(i.head, j.head)) j.next()
+                res += i.next()
+              } else {
+                res += j.next()
+              }
+            } else if (i.nonEmpty) {
+              res += i.next()
             } else {
-              res += o_j
-              j += 1
+              res += j.next()
             }
-          } else if (i < output.length) {
-            res += output(i)
-            i += 1
-          } else {
-            res += n.getOutput(j)
-            j += 1
           }
+          output = res.toList
         }
-        output = res
       }
 
       def getSum(first: Int, last: Int): Long = {
         summarizeScores()
-/*
-        var sum = 0L
-        output.foreach(g =>
-          if (first <= g.idx && g.idx <= last) sum += g.health
-        )
-        sum
-*/
-        if (genes.isEmpty) 0
-        else {
-          val gFirst = math.max(genes.head.idx, first)
-          val gLast = math.min(genes.last.idx, last)
+        if (output.isEmpty) {
+          0L
+        } else {
+          val gFirst = math.max(output.head.idx, first)
+          val gLast = math.min(output.last.idx, last)
           if (gFirst <= gLast) {
             val minSum = findFirstHealth(gFirst).fold(0L)(_.health)
             val maxSum = findLastHealth(gLast).fold(0L)(_.health)
             maxSum - minSum
-          } else 0
+          } else {
+            0L
+          }
         }
       }
 
       private def summarizeScores(): Unit = {
         if (genes != null) return
-        genes = new ArrayBuffer[Gene](output.length)
+        genes = new Array[Gene](output.size)
         var sum = 0L
-        output.indices.foreach { i =>
-          val g = output(i)
+        var i = 0
+        output.foreach { g =>
           sum += g.health
-          genes += g.copy(health = sum)
+          g.health = sum
+          genes(i) = g
+          i += 1
         }
       }
 
@@ -301,3 +308,32 @@ object Determining_DNA_Health_2 extends App
   }
 
 }
+
+/*
+      {
+        new Iterable[Node] {
+          override def iterator: Iterator[Node] = new Iterator[Node] {
+            var n: Node = _
+            var i = 0
+            override def hasNext: Boolean = {
+              while (i < nextNodes.length && { n = nextNodes(i); n == null } ) i += 1
+              i < nextNodes.length && n != null
+            }
+            override def next(): Node = {
+              if (n != null) {
+                i += 1
+                val res = n
+                n = null
+                res
+              } else {
+                while (i < nextNodes.length && { n = nextNodes(i); n == null } ) i += 1
+                val res = n
+                n = null
+                res
+              }
+            }
+          }
+        }
+        nextNodes.view.filterNot(_ == null)
+      }
+*/
