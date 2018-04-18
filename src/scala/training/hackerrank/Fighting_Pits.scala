@@ -10,9 +10,11 @@ object Fighting_Pits extends App
   object Solution
   {
 
+    import scala.collection.mutable
     import scala.collection.mutable.ListBuffer
 
-    private class Troop(val s: Int, var n: Int)
+
+    private class Troop(val s: Int, var n: Long)
 
     private class Team
     {
@@ -22,29 +24,27 @@ object Fighting_Pits extends App
 
       private var isSorted: Boolean = false
 
-      private val temp: ListBuffer[Int] = ListBuffer()
+      private val m: mutable.Map[Int, Troop] = mutable.Map()
 
       def sort(): Unit = {
         if (!isSorted) {
           isSorted = true
-          val arr = temp.toArray
+          val arr = m.keys.toArray
           java.util.Arrays.sort(arr)
-          arr.indices.foreach(i => _prepend(arr(i)))
+          (arr.length - 1 to 0 by -1).foreach { s =>
+            troops += m(arr(s))
+          }
         }
       }
 
       def addFighter(s: Int): Unit = {
         total += s
-        s +=: temp
+        m.getOrElseUpdate(s, new Troop(s, 0)).n += 1
       }
 
       def prependFighter(s: Int): Unit = {
         total += s
         if (!isSorted) sort()
-        _prepend(s)
-      }
-
-      private def _prepend(s: Int) = {
         if (troops.isEmpty || troops.head.s < s) {
           new Troop(s, 1) +=: troops
         } else {
@@ -69,7 +69,7 @@ object Fighting_Pits extends App
           val di = math.min(ni, d)
           total -= di * si
           ni -= di
-          d -= di
+          d -= di.toInt
           if (ni == 0 && i.hasNext) {
             t = i.next()
             si = t.s
@@ -95,7 +95,7 @@ object Fighting_Pits extends App
     }
 
     def main(args: Array[String]): Unit = {
-      val sc = new FastReader
+      val sc = new FastReader()
       val n, k, q = sc.nextInt()
       val teams = Array.fill(k + 1)(new Team())
       (1 to n).foreach { _ =>
@@ -103,7 +103,7 @@ object Fighting_Pits extends App
         val i = sc.nextInt()
         teams(i).addFighter(s)
       }
-      (1 to q).foreach { _ =>
+      (1 to q).foreach { i =>
         sc.nextInt() match {
           case 1 =>
             val s = sc.nextInt()
@@ -179,7 +179,6 @@ object Fighting_Pits extends App
         din.close()
       }
     }
-
   }
 
 }
