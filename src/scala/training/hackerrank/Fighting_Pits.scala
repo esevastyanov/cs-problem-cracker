@@ -1,6 +1,5 @@
 package training.hackerrank
 
-
 /**
   * https://www.hackerrank.com/challenges/fighting-pits/problem
   */
@@ -12,40 +11,82 @@ object Fighting_Pits extends App
   {
 
     import scala.collection.mutable
+    import scala.collection.mutable.ListBuffer
 
-    private case class Team(
-      t: mutable.SortedMap[Int, Int] = mutable.SortedMap()(Ordering.Int.reverse),
-      var strength: Long = 0
-    )
+
+    private class Troop(val s: Int, var n: Int)
+
+    private class Team
+    {
+      val troops: ListBuffer[Troop] = ListBuffer()
+
+      var total: Long = 0
+
+      private var isSorted: Boolean = false
+
+      private val m: mutable.Map[Int, Troop] = mutable.Map()
+
+      def sort(): Unit = {
+        if (!isSorted) {
+          isSorted = true
+          val arr = m.keys.toArray
+          java.util.Arrays.sort(arr)
+          (arr.length - 1 to 0 by -1).foreach { s =>
+            troops += m(arr(s))
+          }
+        }
+      }
+
+      def addFighter(s: Int): Unit = {
+        total += s
+        m.getOrElseUpdate(s, new Troop(s, 0)).n += 1
+      }
+
+      def prependFighter(s: Int): Unit = {
+        total += s
+        if (!isSorted) sort()
+        if (troops.isEmpty || troops.head.s < s) {
+          new Troop(s, 1) +=: troops
+        } else {
+          troops.head.n += 1
+        }
+      }
+    }
 
     private class TeamBattleHolder(val team: Team)
     {
-      private val iterator = team.t.keys.iterator
-      var strength: Int = if (iterator.hasNext) iterator.next() else 0
-      private var ni = if (strength != 0) team.t(strength) else 0
-      var totalStrength: Long = team.strength
+      team.sort()
+      private val i  = team.troops.iterator
+      private var t  = if (i.hasNext) i.next() else new Troop(0, 0)
+      private var ni = t.n
+
+      var si   : Int  = t.s
+      var total: Long = team.total
 
       def hit(damage: Int): Unit = {
-        if (damage > 0 && totalStrength > 0) {
-          val di = math.min(ni, damage)
-          totalStrength -= di * strength
+        var d = damage
+        while (d > 0 && total > 0) {
+          val di = math.min(ni, d)
+          total -= di * si
           ni -= di
-          if (ni == 0 && iterator.hasNext) {
-            strength = iterator.next()
-            ni = team.t(strength)
+          d -= di
+          if (ni == 0 && i.hasNext) {
+            t = i.next()
+            si = t.s
+            ni = t.n
           }
-          hit(damage - di)
         }
       }
     }
 
     private def whoIsWinner(t1: Team, t2: Team): Team = {
+      if (t2.total == 0) return t1
+      if (t1.total == 0) return t2
+      if (t1.total >= t2.total) return t1
       var oq = new TeamBattleHolder(t1)
       var dq = new TeamBattleHolder(t2)
-      if (dq.totalStrength == 0) return oq.team
-      if (oq.totalStrength == 0) return dq.team
-      while (oq.totalStrength < dq.totalStrength && dq.totalStrength > 0) {
-        dq.hit(oq.strength)
+      while (oq.total < dq.total && dq.total > 0) {
+        dq.hit(oq.si)
         val t = oq
         oq = dq
         dq = t
@@ -53,26 +94,21 @@ object Fighting_Pits extends App
       oq.team
     }
 
-    private def addFighter(team: Team, s: Int): Unit = {
-      team.t(s) = team.t.getOrElse(s, 0) + 1
-      team.strength += s
-    }
-
     def main(args: Array[String]): Unit = {
       val sc = new java.util.Scanner(System.in)
       val n, k, q = sc.nextInt()
-      val teams = Array.fill(k + 1)(Team())
+      val teams = Array.fill(k + 1)(new Team())
       (1 to n).foreach { _ =>
         val s = sc.nextInt()
         val i = sc.nextInt()
-        addFighter(teams(i), s)
+        teams(i).addFighter(s)
       }
       (1 to q).foreach { _ =>
         sc.nextInt() match {
           case 1 =>
             val s = sc.nextInt()
             val i = sc.nextInt()
-            addFighter(teams(i), s)
+            teams(i).prependFighter(s)
           case 2 =>
             val offender = sc.nextInt()
             val tOff = teams(offender)
