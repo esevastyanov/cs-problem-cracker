@@ -13,102 +13,70 @@ object Fighting_Pits extends App
 
     import scala.collection.mutable
 
-    private class Team
-    {
-      val m: mutable.SortedMap[Int, Int] = mutable.SortedMap()
-
-      var strength: Int = 0
-      var count   : Int = 0
-
-      private var changed = true
-
-      private var fighters : Array[Int] = Array()
-      private var strengths: Array[Int] = Array()
-
-      def addFighter(s: Int): Unit = {
-        changed = true
-        val v = m.getOrElseUpdate(s, 0)
-        m(s) = v + 1
-        strength += s
-        count += 1
-      }
-
-      def getFighters: Array[Int] = {
-        refresh()
-        fighters
-      }
-
-      def getStrenghts: Array[Int] = {
-        refresh()
-        strengths
-      }
-
-      private def refresh(): Unit = {
-        if (changed) {
-          changed = false
-          fighters = new Array[Int](count)
-          strengths = new Array[Int](count)
-          var i = 0
-          m.foreach { case (k, v) =>
-            (1 to v).foreach { _ =>
-              fighters(i) = k
-              strengths(i) = if (i == 0) k else strengths(i - 1) + k
-              i += 1
-            }
-          }
-        }
-      }
-    }
+    private case class Team(
+      t: mutable.SortedMap[Int, Int] = mutable.SortedMap()(Ordering.Int.reverse),
+      var strength: Long = 0
+    )
 
     private class TeamBattleHolder(val team: Team)
     {
-      val fighters : Array[Int] = team.getFighters
-      var i        : Int        = team.getFighters.length - 1
-
-      def total: Int = if (i >= 0) team.getStrenghts(i) else 0
+      private val iterator = team.t.keys.iterator
+      var strength: Int = if (iterator.hasNext) iterator.next() else 0
+      private var ni = if (strength != 0) team.t(strength) else 0
+      var totalStrength: Long = team.strength
 
       def hit(damage: Int): Unit = {
-        i -= damage
+        if (damage > 0 && totalStrength > 0) {
+          val di = math.min(ni, damage)
+          totalStrength -= di * strength
+          ni -= di
+          if (ni == 0 && iterator.hasNext) {
+            strength = iterator.next()
+            ni = team.t(strength)
+          }
+          hit(damage - di)
+        }
       }
     }
 
     private def whoIsWinner(t1: Team, t2: Team): Team = {
-      val tt1 = new TeamBattleHolder(t1)
-      val tt2 = new TeamBattleHolder(t2)
-      if (tt2.i < 0) return t1
-      if (tt1.i < 0) return t2
-      var oq = tt1
-      var dq = tt2
-      while (oq.total < dq.total && oq.i >= 0 && dq.i >= 0) {
-        dq.hit(oq.fighters(oq.i))
-        if (dq.i >= 0) {
-          val t = oq
-          oq = dq
-          dq = t
-        }
+      var oq = new TeamBattleHolder(t1)
+      var dq = new TeamBattleHolder(t2)
+      if (dq.totalStrength == 0) return oq.team
+      if (oq.totalStrength == 0) return dq.team
+      while (oq.totalStrength < dq.totalStrength && dq.totalStrength > 0) {
+        dq.hit(oq.strength)
+        val t = oq
+        oq = dq
+        dq = t
       }
       oq.team
+    }
+
+    private def addFighter(team: Team, s: Int): Unit = {
+      team.t(s) = team.t.getOrElse(s, 0) + 1
+      team.strength += s
     }
 
     def main(args: Array[String]): Unit = {
       val sc = new java.util.Scanner(System.in)
       val n, k, q = sc.nextInt()
-      val teams = Array.fill(k + 1)(new Team())
+      val teams = Array.fill(k + 1)(Team())
       (1 to n).foreach { _ =>
         val s = sc.nextInt()
         val i = sc.nextInt()
-        teams(i).addFighter(s)
+        addFighter(teams(i), s)
       }
       (1 to q).foreach { _ =>
         sc.nextInt() match {
           case 1 =>
             val s = sc.nextInt()
             val i = sc.nextInt()
-            teams(i).addFighter(s)
+            addFighter(teams(i), s)
           case 2 =>
             val offender = sc.nextInt()
-            val defender = sc.nextInt()
             val tOff = teams(offender)
+            val defender = sc.nextInt()
             val tDef = teams(defender)
             println(if (whoIsWinner(tOff, tDef) == tOff) offender else defender)
           case c => sys.error(s"Unknown command $c")
