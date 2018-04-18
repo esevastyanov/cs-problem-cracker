@@ -16,7 +16,7 @@ object Fighting_Pits extends App
 
     private class Troop(val s: Int, var n: Long)
 
-    private class Team
+    private class Team(val i: Int)
     {
       val troops: ListBuffer[Troop] = ListBuffer()
 
@@ -79,42 +79,50 @@ object Fighting_Pits extends App
       }
     }
 
-    private def whoIsWinner(t1: Team, t2: Team): Team = {
-      if (t2.total == 0) return t1
-      if (t1.total == 0) return t2
-      if (t1.total >= t2.total) return t1
-      var oq = new TeamBattleHolder(t1)
-      var dq = new TeamBattleHolder(t2)
-      while (oq.total < dq.total && dq.total > 0) {
-        dq.hit(oq.si)
-        val t = oq
-        oq = dq
-        dq = t
-      }
-      oq.team
+    var cache: mutable.Map[(Int, Int), Int] = mutable.Map[(Int, Int), Int]()
+
+    private def whoIsWinner(t1: Team, t2: Team): Int = {
+      if (t2.total == 0) return t1.i
+      if (t1.total == 0) return t2.i
+      if (t1.total >= t2.total) return t1.i
+      cache.getOrElseUpdate((t1.i, t2.i), {
+        var oq = new TeamBattleHolder(t1)
+        var dq = new TeamBattleHolder(t2)
+        while (oq.total < dq.total && dq.total > 0) {
+          dq.hit(oq.si)
+          val t = oq
+          oq = dq
+          dq = t
+        }
+        oq.team.i
+      })
     }
 
     def main(args: Array[String]): Unit = {
-      val sc = new FastReader()
+      val sc = new FastReader
       val n, k, q = sc.nextInt()
-      val teams = Array.fill(k + 1)(new Team())
-      (1 to n).foreach { _ =>
+      val teams = new Array[Team](k + 1)
+      (1 to n).foreach { i =>
         val s = sc.nextInt()
         val i = sc.nextInt()
+        if (teams(i) == null) teams(i) = new Team(i)
         teams(i).addFighter(s)
       }
       (1 to q).foreach { i =>
         sc.nextInt() match {
           case 1 =>
+            cache = cache.empty
             val s = sc.nextInt()
             val i = sc.nextInt()
+            if (teams(i) == null) teams(i) = new Team(i)
             teams(i).prependFighter(s)
           case 2 =>
             val offender = sc.nextInt()
-            val tOff = teams(offender)
             val defender = sc.nextInt()
-            val tDef = teams(defender)
-            println(if (whoIsWinner(tOff, tDef) == tOff) offender else defender)
+            val tOff = Option(teams(offender)).getOrElse(new Team(offender))
+            val tDef = Option(teams(defender)).getOrElse(new Team(defender))
+            val winner = whoIsWinner(tOff, tDef)
+            println(winner)
           case c => sys.error(s"Unknown command $c")
         }
       }
@@ -148,20 +156,6 @@ object Fighting_Pits extends App
         res
       }
 
-      def next(): String = {
-        val sb = new StringBuilder()
-        var c = read
-        while (c != -1 && (c == '\n' || c == ' ' || c == '\t')) {
-          c = read
-        }
-        while (c != -1 && c != '\n' && c != ' ' && c != '\t') {
-          sb.append(c.toChar)
-          c = read
-        }
-        val res = sb.mkString
-        res
-      }
-
       private def fillBuffer(): Unit = {
         bufferPointer = 0
         bytesRead = din.read(buffer, bufferPointer, BUFFER_SIZE)
@@ -179,6 +173,7 @@ object Fighting_Pits extends App
         din.close()
       }
     }
+
   }
 
 }
