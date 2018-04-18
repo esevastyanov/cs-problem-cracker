@@ -10,9 +10,7 @@ object Fighting_Pits extends App
   object Solution
   {
 
-    import scala.collection.mutable
     import scala.collection.mutable.ListBuffer
-
 
     private class Troop(val s: Int, var n: Int)
 
@@ -24,27 +22,29 @@ object Fighting_Pits extends App
 
       private var isSorted: Boolean = false
 
-      private val m: mutable.Map[Int, Troop] = mutable.Map()
+      private val temp: ListBuffer[Int] = ListBuffer()
 
       def sort(): Unit = {
         if (!isSorted) {
           isSorted = true
-          val arr = m.keys.toArray
+          val arr = temp.toArray
           java.util.Arrays.sort(arr)
-          (arr.length - 1 to 0 by -1).foreach { s =>
-            troops += m(arr(s))
-          }
+          arr.indices.foreach(i => _prepend(arr(i)))
         }
       }
 
       def addFighter(s: Int): Unit = {
         total += s
-        m.getOrElseUpdate(s, new Troop(s, 0)).n += 1
+        s +=: temp
       }
 
       def prependFighter(s: Int): Unit = {
         total += s
         if (!isSorted) sort()
+        _prepend(s)
+      }
+
+      private def _prepend(s: Int) = {
         if (troops.isEmpty || troops.head.s < s) {
           new Troop(s, 1) +=: troops
         } else {
@@ -95,7 +95,7 @@ object Fighting_Pits extends App
     }
 
     def main(args: Array[String]): Unit = {
-      val sc = new java.util.Scanner(System.in)
+      val sc = new FastReader
       val n, k, q = sc.nextInt()
       val teams = Array.fill(k + 1)(new Team())
       (1 to n).foreach { _ =>
@@ -119,6 +119,67 @@ object Fighting_Pits extends App
         }
       }
     }
+
+    class FastReader()
+    {
+
+      import java.io.DataInputStream
+
+      private val BUFFER_SIZE   = 1 << 16
+      private val din           = new DataInputStream(System.in)
+      private val buffer        = new Array[Byte](BUFFER_SIZE)
+      private var bufferPointer = 0
+      private var bytesRead     = 0
+
+
+      def nextInt(): Int = {
+        var ret = 0
+        var c = read
+        while (c <= ' ') {
+          c = read
+        }
+        val neg = c == '-'
+        if (neg) c = read
+        do {
+          ret = ret * 10 + c - '0'
+          c = read
+        } while (c >= '0' && c <= '9')
+        val res = if (neg) -ret else ret
+        res
+      }
+
+      def next(): String = {
+        val sb = new StringBuilder()
+        var c = read
+        while (c != -1 && (c == '\n' || c == ' ' || c == '\t')) {
+          c = read
+        }
+        while (c != -1 && c != '\n' && c != ' ' && c != '\t') {
+          sb.append(c.toChar)
+          c = read
+        }
+        val res = sb.mkString
+        res
+      }
+
+      private def fillBuffer(): Unit = {
+        bufferPointer = 0
+        bytesRead = din.read(buffer, bufferPointer, BUFFER_SIZE)
+        if (bytesRead == -1) buffer(0) = -1
+      }
+
+      private def read = {
+        if (bufferPointer == bytesRead) fillBuffer()
+        bufferPointer += 1
+        buffer(bufferPointer - 1)
+      }
+
+      def close(): Unit = {
+        if (din == null) return
+        din.close()
+      }
+    }
+
   }
 
 }
