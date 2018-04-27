@@ -23,6 +23,7 @@ object Hamming_Distance extends App
           case "W" => println(ba.toString(sc.nextInt() - 1, sc.nextInt() - 1))
           case "H" => println(ba.hamming(sc.nextInt() - 1, sc.nextInt() - 1, sc.nextInt()))
         }
+//        println(ba)
       }
     }
 
@@ -31,28 +32,79 @@ object Hamming_Distance extends App
 
       import BitArray._
 
-      val arr = new Array[Int](index(n))
+      val arr : Array[Int] = new Array[Int](index(n))
+      val ZERO: Int        = 0
+      val ONE : Int        = ~0
 
-      def at(i: Int): Int = {
+      def at(i: Int): Boolean = {
         val na = i / SIZE
         val ne = i % SIZE
-        arr(na) >> (SIZE - 1 - ne) & 1
+        (arr(na) >>> (SIZE - 1 - ne) & 1) == 0
       }
 
       def assign(k: Int, ch: Char): Unit = {
-        assign(k, ch - 'a')
+        assign(k, ch == 'a')
       }
 
-      def assign(k: Int, v: Int): Unit = {
+      def assign(k: Int, zero: Boolean): Unit = {
         val i = k / SIZE
         val s = k % SIZE
         arr(i) &= ~(1 << (SIZE - 1 - s))
-        arr(i) |= v << (SIZE - 1 - s)
+        arr(i) |= (if (zero) 0 else 1) << (SIZE - 1 - s)
       }
 
       def const(l: Int, r: Int, ch: Char): Unit = {
-        (l to r).foreach { i => assign(i, ch) }
+        const(l, r, ch == 'a')
       }
+
+      def const(l: Int, r: Int, zero: Boolean): Unit = {
+        if (l / SIZE != r / SIZE) {
+          if (l % SIZE == 0) {
+            if (zero) arr(l / SIZE) = 0 else arr(l / SIZE) = ONE
+          } else {
+            if (zero) {
+              arr(l / SIZE) &= (ONE << (SIZE - l % SIZE))
+            } else {
+              arr(l / SIZE) |= (ONE >>> (l % SIZE))
+            }
+          }
+          (l / SIZE + 1 until r / SIZE).foreach { i =>
+            if (zero) arr(i) = 0 else arr(i) = ONE
+          }
+          if ((r+1) % SIZE == 0) {
+            if (zero) arr(r / SIZE) = 0 else arr(r/SIZE) = ONE
+          } else {
+            if (zero) {
+              arr(r / SIZE) &= (ONE >>> (r % SIZE + 1))
+            } else {
+              arr(r / SIZE) |= (ONE << (SIZE - r % SIZE - 1))
+            }
+          }
+        } else {
+          if (l % SIZE == 0 && (r+1) % SIZE == 0) {
+            if (zero) arr(l / SIZE) = 0 else arr(l / SIZE) = ONE
+          } else if (l % SIZE == 0) {
+            if (zero) {
+              arr(r / SIZE) &= (ONE >>> (r % SIZE + 1))
+            } else {
+              arr(r / SIZE) |= (ONE << (SIZE - r % SIZE - 1))
+            }
+          } else if ((r+1) % SIZE == 0) {
+            if (zero) {
+              arr(l / SIZE) &= (ONE << (SIZE - l % SIZE))
+            } else {
+              arr(l / SIZE) |= (ONE >>> (l % SIZE))
+            }
+          } else {
+            if (zero) {
+              arr(l/SIZE) &= ONE << (SIZE - l % SIZE) | (ONE >>> (r % SIZE + 1))
+            } else {
+              arr(l/SIZE) |= ~(ONE << (SIZE - l % SIZE) | (ONE >>> (r % SIZE + 1)))
+            }
+          }
+        }
+      }
+
 
       def copy(l: Int, r: Int): BitArray = {
         val ba = new BitArray(r - l + 1)
@@ -88,15 +140,23 @@ object Hamming_Distance extends App
       }
 
       def toString(l: Int, r: Int): String = {
-        (l to r).map(i => ('a' + at(i)).toChar).mkString
+        (l to r).map(i => if (at(i)) 'a' else 'b').mkString
       }
 
       override def toString: String = {
-        (0 until n).map(i => ('a' + at(i)).toChar).mkString
+        (0 until n).map(i => if (at(i)) 'a' else 'b').mkString
       }
 
       def hamming(l1: Int, l2: Int, len: Int): Int = {
-        (0 until len).map(i => math.abs(this.at(l1 + i) - this.at(l2 + i))).sum
+        if (l1 % SIZE == l2 % SIZE) {
+/*
+          val ba1 = this.copy(l1, l1 + len - 1)
+          val ba2 = this.copy(l2, l2 + len - 1)
+*/
+          (0 until len).map(i => if (this.at(l1 + i) ^ this.at(l2 + i)) 1 else 0).sum
+        } else {
+          (0 until len).map(i => if (this.at(l1 + i) ^ this.at(l2 + i)) 1 else 0).sum
+        }
       }
 
     }

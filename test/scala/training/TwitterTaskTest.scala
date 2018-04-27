@@ -2,7 +2,7 @@ package training
 
 import org.scalatest._
 
-class TwitterTaskTest extends FunSuite with ShouldMatchers
+class TwitterTaskTest extends FunSuite with Matchers
 {
   test("case 1") {
     TwitterTask.solution_01(Array(1, 2, 3, 4, 5)) shouldBe 0

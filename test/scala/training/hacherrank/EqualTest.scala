@@ -3,7 +3,7 @@ package training.hacherrank
 import org.scalatest._
 import training.hackerrank.Equal
 
-class EqualTest extends FunSuite with ShouldMatchers
+class EqualTest extends FunSuite with Matchers
 {
   test("case 1") {
     Equal.Solution.operations(Seq(2, 2, 3, 7)) shouldBe 2L
