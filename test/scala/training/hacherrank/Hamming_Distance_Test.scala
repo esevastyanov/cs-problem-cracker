@@ -62,4 +62,12 @@ class Hamming_Distance_Test extends FunSuite with Matchers
       "aaaaaaabbbbbbbbbbaaaaaaa"
   }
 
+  test("8") {
+    val ba =
+      BitArray.fill("aaaaaaaabbbbbbbbaaaaaaaa")
+    ba.const(16, 16, false)
+    ba.toString shouldBe
+      "aaaaaaaabbbbbbbbbaaaaaaa"
+  }
+
 }

@@ -23,7 +23,7 @@ object Hamming_Distance extends App
           case "W" => println(ba.toString(sc.nextInt() - 1, sc.nextInt() - 1))
           case "H" => println(ba.hamming(sc.nextInt() - 1, sc.nextInt() - 1, sc.nextInt()))
         }
-//        println(ba)
+        //        println(ba)
       }
     }
 
@@ -58,49 +58,39 @@ object Hamming_Distance extends App
       }
 
       def const(l: Int, r: Int, zero: Boolean): Unit = {
+
+        def constBlock(n: Int): Unit = {
+          if (zero) arr(n) = 0 else arr(n) = ONE
+        }
+
+        def constBlockRight(i: Int): Unit = {
+          val pattern = ONE << (SIZE - i % SIZE)
+          if (zero) arr(i / SIZE) &= pattern else arr(i / SIZE) |= ~pattern
+        }
+
+        def constBlockLeft(i: Int): Unit = {
+          val pattern = ONE << (SIZE - i % SIZE - 1)
+          if (zero) arr(i / SIZE) &= ~pattern else arr(i / SIZE) |= pattern
+        }
+
+        def constBlockMiddle(l: Int, r: Int): Unit = {
+          val pattern = ONE << (SIZE - l % SIZE) | (ONE >>> (r % SIZE + 1))
+          if (zero) arr(l / SIZE) &= pattern else arr(l / SIZE) |= ~pattern
+        }
+
         if (l / SIZE != r / SIZE) {
-          if (l % SIZE == 0) {
-            if (zero) arr(l / SIZE) = 0 else arr(l / SIZE) = ONE
-          } else {
-            if (zero) {
-              arr(l / SIZE) &= (ONE << (SIZE - l % SIZE))
-            } else {
-              arr(l / SIZE) |= (ONE >>> (l % SIZE))
-            }
-          }
-          (l / SIZE + 1 until r / SIZE).foreach { i =>
-            if (zero) arr(i) = 0 else arr(i) = ONE
-          }
-          if ((r+1) % SIZE == 0) {
-            if (zero) arr(r / SIZE) = 0 else arr(r/SIZE) = ONE
-          } else {
-            if (zero) {
-              arr(r / SIZE) &= (ONE >>> (r % SIZE + 1))
-            } else {
-              arr(r / SIZE) |= (ONE << (SIZE - r % SIZE - 1))
-            }
-          }
+          if (l % SIZE == 0) constBlock(l / SIZE) else constBlockRight(l)
+          (l / SIZE + 1 until r / SIZE).foreach(constBlock)
+          if ((r + 1) % SIZE == 0) constBlock(r / SIZE) else constBlockLeft(r)
         } else {
-          if (l % SIZE == 0 && (r+1) % SIZE == 0) {
-            if (zero) arr(l / SIZE) = 0 else arr(l / SIZE) = ONE
+          if (l % SIZE == 0 && (r + 1) % SIZE == 0) {
+            constBlock(l / SIZE)
           } else if (l % SIZE == 0) {
-            if (zero) {
-              arr(r / SIZE) &= (ONE >>> (r % SIZE + 1))
-            } else {
-              arr(r / SIZE) |= (ONE << (SIZE - r % SIZE - 1))
-            }
-          } else if ((r+1) % SIZE == 0) {
-            if (zero) {
-              arr(l / SIZE) &= (ONE << (SIZE - l % SIZE))
-            } else {
-              arr(l / SIZE) |= (ONE >>> (l % SIZE))
-            }
+            constBlockLeft(r)
+          } else if ((r + 1) % SIZE == 0) {
+            constBlockRight(l)
           } else {
-            if (zero) {
-              arr(l/SIZE) &= ONE << (SIZE - l % SIZE) | (ONE >>> (r % SIZE + 1))
-            } else {
-              arr(l/SIZE) |= ~(ONE << (SIZE - l % SIZE) | (ONE >>> (r % SIZE + 1)))
-            }
+            constBlockMiddle(l, r)
           }
         }
       }
@@ -149,10 +139,10 @@ object Hamming_Distance extends App
 
       def hamming(l1: Int, l2: Int, len: Int): Int = {
         if (l1 % SIZE == l2 % SIZE) {
-/*
-          val ba1 = this.copy(l1, l1 + len - 1)
-          val ba2 = this.copy(l2, l2 + len - 1)
-*/
+          /*
+                    val ba1 = this.copy(l1, l1 + len - 1)
+                    val ba2 = this.copy(l2, l2 + len - 1)
+          */
           (0 until len).map(i => if (this.at(l1 + i) ^ this.at(l2 + i)) 1 else 0).sum
         } else {
           (0 until len).map(i => if (this.at(l1 + i) ^ this.at(l2 + i)) 1 else 0).sum
