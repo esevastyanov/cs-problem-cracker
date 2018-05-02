@@ -53,6 +53,19 @@ class Hamming_Distance_Test extends FunSuite with Matchers
     }
   }
 
+  test("shift right") {
+    val lengthLimit = BitArray.SIZE * 3
+    for (l <- 1 to lengthLimit) {
+      val s = Array.fill(l)(if (math.random() < .5) 'a' else 'b').mkString
+      for (i <- 0 until l) {
+        val ba = BitArray.fill(s)
+        ba.shiftRight(i)
+        val res = Array.fill(i)('a').mkString + s.substring(0, l - i)
+        ba.toString shouldBe res
+      }
+    }
+  }
+
   test("copy raw") {
     val lengthLimit = BitArray.SIZE * 3
     for (l <- 1 to lengthLimit) {
@@ -86,15 +99,41 @@ class Hamming_Distance_Test extends FunSuite with Matchers
 
   test("hamming") {
     val lengthLimit = BitArray.SIZE * 3
-    for (l <- 33 to lengthLimit) {
+    for (l <- 1 to lengthLimit) {
       val s = Array.fill(l)(if (math.random() < .5) 'a' else 'b').mkString
       val ba = BitArray.fill(s)
       for (i1 <- 0 until l) {
         for (i2 <- 0 until l) {
           for (l1 <- 1 to math.min(l - i1, l - i2)) {
             var res = 0
-            for (j <- 0 until l1 if s(i1 + j) != s(i2 + j)) res += 1
+            for (j <- 0 until l1 if s(i1 + j) != s(i2 + j)) {
+              res += 1
+            }
             ba.hamming(i1, i2, l1) shouldBe res
+          }
+        }
+      }
+    }
+  }
+
+  test("swap") {
+    val lengthLimit = BitArray.SIZE * 3
+    for (l <- 1 to lengthLimit) {
+      val s = Array.fill(l)(if (math.random() < .5) 'a' else 'b').mkString
+      for (l1 <- 0 until l) {
+        for (r1 <- l1 until l) {
+          for (l2 <- r1 + 1 until l) {
+            for (r2 <- l2 until l) {
+              val ba = BitArray.fill(s)
+              val res =
+                Try(s.substring(0, l1)).getOrElse("") +
+                  s.substring(l2, r2 + 1) +
+                  Try(s.substring(r1 + 1, l2)).getOrElse("") +
+                  s.substring(l1, r1 + 1) +
+                  Try(s.substring(r2 + 1)).getOrElse("")
+              ba.swap(l1, r1, l2, r2)
+              ba.toString shouldBe res
+            }
           }
         }
       }

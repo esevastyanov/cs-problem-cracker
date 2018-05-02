@@ -32,7 +32,7 @@ object Hamming_Distance extends App
 
       import BitArray._
 
-      val arr : Array[Int] = new Array[Int](index(n))
+      val arr : Array[Int] = new Array[Int]((n - 1) / SIZE + 2)
       val ZERO: Int        = 0
       val ONE : Int        = ~0
 
@@ -115,6 +115,26 @@ object Hamming_Distance extends App
         }
       }
 
+      def shiftRight(k: Int): Unit = {
+        if (k != 0) {
+          val d = k / SIZE
+          if (d != 0) {
+            arr.indices.reverse.foreach { i => // TODO: Reverse
+              if (i - d >= 0) arr(i) = arr(i - d) else arr(i) = 0
+            }
+          }
+          val sh = k % SIZE
+          if (sh != 0) {
+            arr.indices.reverse.foreach { i => // TODO: Reverse
+              arr(i) >>>= sh
+              if (i - 1 >= 0) {
+                arr(i) |= arr(i - 1) << SIZE - sh
+              }
+            }
+          }
+        }
+      }
+
       def copyRaw(l: Int, r: Int): BitArray = {
         val ba = new BitArray((r / SIZE - l / SIZE + 1) * SIZE)
         (l / SIZE to r / SIZE).foreach(i => ba.arr(i - l / SIZE) = arr(i))
@@ -130,19 +150,53 @@ object Hamming_Distance extends App
       }
 
       def swap(l1: Int, r1: Int, l2: Int, r2: Int): Unit = {
-        val n1 = r1 - l1 + 1
-        val n2 = r2 - l2 + 1
-        val b = l2 - r1 - 1
-        if (n1 >= n2) {
-          val ba1 = this.copy(l1, r1)
-          (0 until n2).foreach(i => this.assign(l1 + i, this.at(l2 + i)))
-          (0 until b).foreach(i => this.assign(l1 + n2 + i, this.at(r1 + 1 + i)))
-          (0 until n1).foreach(i => this.assign(r2 - n1 + 1 + i, ba1.at(i)))
-        } else {
-          val ba2 = this.copy(l2, r2)
-          (0 until n1).foreach(i => this.assign(r2 - i, this.at(r1 - i)))
-          (0 until b).foreach(i => this.assign(r2 - n1 - i, this.at(l2 - 1 - i)))
-          (0 until n2).foreach(i => this.assign(l1 + i, ba2.at(i)))
+        val ba1 = this.copyRaw(0, l1 - 1)
+        val ba1Len = l1
+        val ba2 = this.copyRaw(l1, r1)
+        val ba2Len = r1 - l1 + 1
+        val ba3 = this.copyRaw(r1 + 1, l2 - 1)
+        val ba3Len = l2 - r1 - 1
+        val ba4 = this.copyRaw(l2, r2)
+        val ba4Len = r2 - l2 + 1
+        val ba5 = this.copyRaw(r2 + 1, n - 1)
+        val ba5Len = n - r2 - 1
+
+        def align(ba: BitArray, s1: Int, s2: Int): Unit = {
+          if (s2 % SIZE > s1 % SIZE) ba.shiftLeft(s2 % SIZE - s1 % SIZE)
+          if (s2 % SIZE < s1 % SIZE) ba.shiftRight(s1 % SIZE - s2 % SIZE)
+        }
+
+        align(ba4, ba1Len, l2)
+        align(ba3, ba1Len + ba4Len, r1 + 1)
+        align(ba2, ba1Len + ba4Len + ba3Len, l1)
+        align(ba5, ba1Len + ba4Len + ba3Len + ba2Len, r2 + 1)
+
+        var i1, i2, i3, i4, i5 = 0
+        for (i <- 0 to (n - 1) / SIZE) {
+          arr(i) = 0
+          if (i <= (ba1Len - 1) / SIZE && i1 < ba1.arr.length) {
+            arr(i) |= ba1.arr(i1)
+            i1 += 1
+          }
+          if (ba1Len / SIZE <= i && i <= (ba1Len + ba4Len - 1) / SIZE && i4 < ba4.arr.length) {
+            arr(i) |= ba4.arr(i4)
+            i4 += 1
+          }
+          if ((ba1Len + ba4Len) / SIZE <= i && i <= (ba1Len + ba4Len + ba3Len - 1) / SIZE && i3 < ba3.arr.length) {
+            arr(i) |= ba3.arr(i3)
+            i3 += 1
+          }
+          if (
+            (ba1Len + ba4Len + ba3Len) / SIZE <= i &&
+              i <= (ba1Len + ba4Len + ba3Len + ba2Len - 1) / SIZE &&
+              i2 < ba2.arr.length) {
+            arr(i) |= ba2.arr(i2)
+            i2 += 1
+          }
+          if ((ba1Len + ba4Len + ba3Len + ba2Len) / SIZE <= i && i5 < ba5.arr.length) {
+            arr(i) |= ba5.arr(i5)
+            i5 += 1
+          }
         }
       }
 
@@ -189,10 +243,6 @@ object Hamming_Distance extends App
         val ba = new BitArray(s.length)
         s.indices.foreach { i => ba.assign(i, s(i)) }
         ba
-      }
-
-      def index(n: Int): Int = {
-        n / SIZE + math.signum(n % SIZE)
       }
     }
 
