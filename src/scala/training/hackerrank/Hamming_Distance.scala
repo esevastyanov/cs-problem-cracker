@@ -9,6 +9,7 @@ object Hamming_Distance extends App
 
   object Solution
   {
+    //  TODO: Replace all / and % operators
 
     def main(args: Array[String]): Unit = {
       val sc = new java.util.Scanner(System.in)
@@ -23,7 +24,6 @@ object Hamming_Distance extends App
           case "W" => println(ba.toString(sc.nextInt() - 1, sc.nextInt() - 1))
           case "H" => println(ba.hamming(sc.nextInt() - 1, sc.nextInt() - 1, sc.nextInt()))
         }
-        //        println(ba)
       }
     }
 
@@ -58,6 +58,7 @@ object Hamming_Distance extends App
       }
 
       def const(l: Int, r: Int, zero: Boolean): Unit = {
+        if (r < l) return
 
         def constBlock(n: Int): Unit = {
           if (zero) arr(n) = 0 else arr(n) = ONE
@@ -95,10 +96,36 @@ object Hamming_Distance extends App
         }
       }
 
+      def shiftLeft(k: Int): Unit = {
+        if (k != 0) {
+          val d = k / SIZE
+          if (d != 0) {
+            arr.indices.foreach { i => if (i + d < arr.length) arr(i) = arr(i + d) }
+            (arr.length - d until arr.length).foreach(arr(_) = 0)
+          }
+          val sh = k % SIZE
+          if (sh != 0) {
+            arr.indices.foreach { i =>
+              arr(i) <<= sh
+              if (i + 1 < arr.length) {
+                arr(i) |= arr(i + 1) >>> SIZE - sh
+              }
+            }
+          }
+        }
+      }
+
+      def copyRaw(l: Int, r: Int): BitArray = {
+        val ba = new BitArray((r / SIZE - l / SIZE + 1) * SIZE)
+        (l / SIZE to r / SIZE).foreach(i => ba.arr(i - l / SIZE) = arr(i))
+        ba.const(0, l % SIZE - 1, true)
+        ba.const(l % SIZE + r - l + 1, (r / SIZE - l / SIZE + 1) * SIZE - 1, true)
+        ba
+      }
 
       def copy(l: Int, r: Int): BitArray = {
-        val ba = new BitArray(r - l + 1)
-        (l to r).foreach(i => ba.assign(i - l, this.at(i)))
+        val ba: BitArray = copyRaw(l, r)
+        ba.shiftLeft(l % SIZE)
         ba
       }
 
@@ -138,15 +165,18 @@ object Hamming_Distance extends App
       }
 
       def hamming(l1: Int, l2: Int, len: Int): Int = {
-        if (l1 % SIZE == l2 % SIZE) {
-          /*
-                    val ba1 = this.copy(l1, l1 + len - 1)
-                    val ba2 = this.copy(l2, l2 + len - 1)
-          */
-          (0 until len).map(i => if (this.at(l1 + i) ^ this.at(l2 + i)) 1 else 0).sum
-        } else {
-          (0 until len).map(i => if (this.at(l1 + i) ^ this.at(l2 + i)) 1 else 0).sum
+        val ba1 = this.copyRaw(l1, l1 + len - 1)
+        val ba2 = this.copyRaw(l2, l2 + len - 1)
+        if (l1 % SIZE > l2 % SIZE) ba1.shiftLeft(l1 % SIZE - l2 % SIZE)
+        if (l2 % SIZE > l1 % SIZE) ba2.shiftLeft(l2 % SIZE - l1 % SIZE)
+        var hd = 0
+        (0 until math.min(ba1.arr.length, ba2.arr.length)).foreach { i =>
+          val x = ba1.arr(i) ^ ba2.arr(i)
+          if (x != 0) {
+            (0 until SIZE).foreach { j => hd += ((x >> j) & 1) }
+          }
         }
+        hd
       }
 
     }
