@@ -13,10 +13,10 @@ object Hamming_Distance extends App
 
     def main(args: Array[String]): Unit = {
       val sc = new java.util.Scanner(System.in)
-      val n = sc.nextInt()
+      val _ = sc.nextInt()
       val s = sc.next()
       val ba = BitArray.fill(s)
-      (1 to sc.nextInt()).foreach { i =>
+      (1 to sc.nextInt()).foreach { _ =>
         sc.next() match {
           case "C" => ba.const(sc.nextInt() - 1, sc.nextInt() - 1, sc.next().head)
           case "S" => ba.swap(sc.nextInt() - 1, sc.nextInt() - 1, sc.nextInt() - 1, sc.nextInt() - 1)
@@ -32,14 +32,15 @@ object Hamming_Distance extends App
 
       import BitArray._
 
-      val arr : Array[Int] = new Array[Int]((n - 1) / SIZE + 2)
-      val ZERO: Int        = 0
-      val ONE : Int        = ~0
+      val arr  : Array[Long] = new Array[Long](((n - 1) >> POW) + 2)
+      val M_ONE: Long        = ~0L
+      val ZERO : Long        = 0L
+      val ONE  : Long        = 1L
 
       def at(i: Int): Boolean = {
-        val na = i / SIZE
-        val ne = i % SIZE
-        (arr(na) >>> (SIZE - 1 - ne) & 1) == 0
+        val na = i >> POW
+        val ne = i & ~(M_ONE << POW)
+        (arr(na) >>> (SIZE - 1 - ne) & ONE) == 0
       }
 
       def assign(k: Int, ch: Char): Unit = {
@@ -47,10 +48,10 @@ object Hamming_Distance extends App
       }
 
       def assign(k: Int, zero: Boolean): Unit = {
-        val i = k / SIZE
+        val i = k >> POW
         val s = k % SIZE
-        arr(i) &= ~(1 << (SIZE - 1 - s))
-        arr(i) |= (if (zero) 0 else 1) << (SIZE - 1 - s)
+        arr(i) &= ~(ONE << (SIZE - 1 - s))
+        arr(i) |= (if (zero) ZERO else ONE) << (SIZE - 1 - s)
       }
 
       def const(l: Int, r: Int, ch: Char): Unit = {
@@ -61,31 +62,31 @@ object Hamming_Distance extends App
         if (r < l) return
 
         def constBlock(n: Int): Unit = {
-          if (zero) arr(n) = 0 else arr(n) = ONE
+          if (zero) arr(n) = ZERO else arr(n) = M_ONE
         }
 
         def constBlockRight(i: Int): Unit = {
-          val pattern = ONE << (SIZE - i % SIZE)
-          if (zero) arr(i / SIZE) &= pattern else arr(i / SIZE) |= ~pattern
+          val pattern = M_ONE << (SIZE - i % SIZE)
+          if (zero) arr(i >> POW) &= pattern else arr(i >> POW) |= ~pattern
         }
 
         def constBlockLeft(i: Int): Unit = {
-          val pattern = ONE << (SIZE - i % SIZE - 1)
-          if (zero) arr(i / SIZE) &= ~pattern else arr(i / SIZE) |= pattern
+          val pattern = M_ONE << (SIZE - i % SIZE - 1)
+          if (zero) arr(i >> POW) &= ~pattern else arr(i >> POW) |= pattern
         }
 
         def constBlockMiddle(l: Int, r: Int): Unit = {
-          val pattern = ONE << (SIZE - l % SIZE) | (ONE >>> (r % SIZE + 1))
-          if (zero) arr(l / SIZE) &= pattern else arr(l / SIZE) |= ~pattern
+          val pattern = (M_ONE << (SIZE - l % SIZE)) | (M_ONE >>> (r % SIZE + 1))
+          if (zero) arr(l >> POW) &= pattern else arr(l >> POW) |= ~pattern
         }
 
-        if (l / SIZE != r / SIZE) {
-          if (l % SIZE == 0) constBlock(l / SIZE) else constBlockRight(l)
-          (l / SIZE + 1 until r / SIZE).foreach(constBlock)
-          if ((r + 1) % SIZE == 0) constBlock(r / SIZE) else constBlockLeft(r)
+        if ((l >> POW) != (r >> POW)) {
+          if (l % SIZE == 0) constBlock(l >> POW) else constBlockRight(l)
+          ((l >> POW) + 1 until r >> POW).foreach(constBlock)
+          if ((r + 1) % SIZE == 0) constBlock(r >> POW) else constBlockLeft(r)
         } else {
           if (l % SIZE == 0 && (r + 1) % SIZE == 0) {
-            constBlock(l / SIZE)
+            constBlock(l >> POW)
           } else if (l % SIZE == 0) {
             constBlockLeft(r)
           } else if ((r + 1) % SIZE == 0) {
@@ -98,7 +99,7 @@ object Hamming_Distance extends App
 
       def shiftLeft(k: Int): Unit = {
         if (k != 0) {
-          val d = k / SIZE
+          val d = k >> POW
           if (d != 0) {
             arr.indices.foreach { i => if (i + d < arr.length) arr(i) = arr(i + d) }
             (arr.length - d until arr.length).foreach(arr(_) = 0)
@@ -117,7 +118,7 @@ object Hamming_Distance extends App
 
       def shiftRight(k: Int): Unit = {
         if (k != 0) {
-          val d = k / SIZE
+          val d = k >> POW
           if (d != 0) {
             arr.indices.reverse.foreach { i => // TODO: Reverse
               if (i - d >= 0) arr(i) = arr(i - d) else arr(i) = 0
@@ -136,10 +137,10 @@ object Hamming_Distance extends App
       }
 
       def copyRaw(l: Int, r: Int): BitArray = {
-        val ba = new BitArray((r / SIZE - l / SIZE + 1) * SIZE)
-        (l / SIZE to r / SIZE).foreach(i => ba.arr(i - l / SIZE) = arr(i))
-        ba.const(0, l % SIZE - 1, true)
-        ba.const(l % SIZE + r - l + 1, (r / SIZE - l / SIZE + 1) * SIZE - 1, true)
+        val ba = new BitArray(((r >> POW) - (l >> POW) + 1) * SIZE)
+        (l >> POW to r >> POW).foreach(i => ba.arr(i - (l >> POW)) = arr(i))
+        ba.const(0, l % SIZE - 1, zero = true)
+        ba.const(l % SIZE + r - l + 1, ((r >> POW) - (l >> POW) + 1) * SIZE - 1, zero = true)
         ba
       }
 
@@ -159,7 +160,6 @@ object Hamming_Distance extends App
         val ba4 = this.copyRaw(l2, r2)
         val ba4Len = r2 - l2 + 1
         val ba5 = this.copyRaw(r2 + 1, n - 1)
-        val ba5Len = n - r2 - 1
 
         def align(ba: BitArray, s1: Int, s2: Int): Unit = {
           if (s2 % SIZE > s1 % SIZE) ba.shiftLeft(s2 % SIZE - s1 % SIZE)
@@ -172,28 +172,28 @@ object Hamming_Distance extends App
         align(ba5, ba1Len + ba4Len + ba3Len + ba2Len, r2 + 1)
 
         var i1, i2, i3, i4, i5 = 0
-        for (i <- 0 to (n - 1) / SIZE) {
+        for (i <- 0 to (n - 1) >> POW) {
           arr(i) = 0
-          if (i <= (ba1Len - 1) / SIZE && i1 < ba1.arr.length) {
+          if (i <= ((ba1Len - 1) >> POW) && i1 < ba1.arr.length) {
             arr(i) |= ba1.arr(i1)
             i1 += 1
           }
-          if (ba1Len / SIZE <= i && i <= (ba1Len + ba4Len - 1) / SIZE && i4 < ba4.arr.length) {
+          if (ba1Len >> POW <= i && i <= ((ba1Len + ba4Len - 1) >> POW) && i4 < ba4.arr.length) {
             arr(i) |= ba4.arr(i4)
             i4 += 1
           }
-          if ((ba1Len + ba4Len) / SIZE <= i && i <= (ba1Len + ba4Len + ba3Len - 1) / SIZE && i3 < ba3.arr.length) {
+          if ((ba1Len + ba4Len) >> POW <= i && i <= ((ba1Len + ba4Len + ba3Len - 1) >> POW) && i3 < ba3.arr.length) {
             arr(i) |= ba3.arr(i3)
             i3 += 1
           }
           if (
-            (ba1Len + ba4Len + ba3Len) / SIZE <= i &&
-              i <= (ba1Len + ba4Len + ba3Len + ba2Len - 1) / SIZE &&
+            (ba1Len + ba4Len + ba3Len) >> POW <= i &&
+              i <= ((ba1Len + ba4Len + ba3Len + ba2Len - 1) >> POW) &&
               i2 < ba2.arr.length) {
             arr(i) |= ba2.arr(i2)
             i2 += 1
           }
-          if ((ba1Len + ba4Len + ba3Len + ba2Len) / SIZE <= i && i5 < ba5.arr.length) {
+          if ((ba1Len + ba4Len + ba3Len + ba2Len) >> POW <= i && i5 < ba5.arr.length) {
             arr(i) |= ba5.arr(i5)
             i5 += 1
           }
@@ -218,12 +218,12 @@ object Hamming_Distance extends App
         (0 until n).map(i => if (at(i)) 'a' else 'b').mkString
       }
 
-      def hamming(l1: Int, l2: Int, len: Int): Int = {
+      def hamming(l1: Int, l2: Int, len: Int): Long = {
         val ba1 = this.copyRaw(l1, l1 + len - 1)
         val ba2 = this.copyRaw(l2, l2 + len - 1)
         if (l1 % SIZE > l2 % SIZE) ba1.shiftLeft(l1 % SIZE - l2 % SIZE)
         if (l2 % SIZE > l1 % SIZE) ba2.shiftLeft(l2 % SIZE - l1 % SIZE)
-        var hd = 0
+        var hd = 0L
         (0 until math.min(ba1.arr.length, ba2.arr.length)).foreach { i =>
           val x = ba1.arr(i) ^ ba2.arr(i)
           if (x != 0) {
@@ -237,7 +237,8 @@ object Hamming_Distance extends App
 
     object BitArray
     {
-      val SIZE = 32
+      val POW = 6
+      val SIZE = 64
 
       def fill(s: String): BitArray = {
         val ba = new BitArray(s.length)

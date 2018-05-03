@@ -117,12 +117,12 @@ class Hamming_Distance_Test extends FunSuite with Matchers
   }
 
   test("swap") {
-    val lengthLimit = BitArray.SIZE * 3
+    val lengthLimit = BitArray.SIZE * 2
     for (l <- 1 to lengthLimit) {
       val s = Array.fill(l)(if (math.random() < .5) 'a' else 'b').mkString
-      for (l1 <- 0 until l) {
-        for (r1 <- l1 until l) {
-          for (l2 <- r1 + 1 until l) {
+      for (l1 <- 0 until math.min(BitArray.SIZE, l)) {
+        for (r1 <- l1 until math.min(BitArray.SIZE, l)) {
+          for (l2 <- math.max(r1 + 1, l - BitArray.SIZE) until l) {
             for (r2 <- l2 until l) {
               val ba = BitArray.fill(s)
               val res =
