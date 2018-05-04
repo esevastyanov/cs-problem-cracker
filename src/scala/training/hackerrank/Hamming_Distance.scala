@@ -30,13 +30,13 @@ object Hamming_Distance extends App
 
       import BitArray._
 
-      type T = Int
+      type T = Long
 
-      val arr  : Array[Int] = new Array[Int](((n - 1) >> POW) + 2)
-      val M_ONE: Int        = ~0
-      val ZERO : Int        = 0
-      val ONE  : Int        = 1
-      val MOD  : Int        = ~(M_ONE << POW)
+      val arr  : Array[Long] = new Array[Long](((n - 1) >> POW) + 2)
+      val M_ONE: Long        = ~0
+      val ZERO : Long        = 0
+      val ONE  : Long        = 1
+      val MOD  : Int        = ~(~0 << POW)
 
       def at(i: Int): Boolean = {
         val na = i >> POW
@@ -238,8 +238,8 @@ object Hamming_Distance extends App
 
     object BitArray
     {
-      val POW = 5
-      val SIZE = 32
+      val POW = 6
+      val SIZE = 64
 
       def fill(s: String): BitArray = {
         val ba = new BitArray(s.length)
