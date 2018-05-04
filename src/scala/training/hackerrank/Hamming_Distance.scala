@@ -9,8 +9,6 @@ object Hamming_Distance extends App
 
   object Solution
   {
-    //  TODO: Replace all / and % operators
-
     def main(args: Array[String]): Unit = {
       val sc = new java.util.Scanner(System.in)
       val _ = sc.nextInt()
