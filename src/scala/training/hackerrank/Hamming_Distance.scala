@@ -173,7 +173,7 @@ object Hamming_Distance extends App
       }
 
       def swap(l1: Int, r1: Int, l2: Int, r2: Int): Unit = { // TODO: Use buffer of arrays to reduce gc
-        val ba1Len = l1
+      val ba1Len = l1
         val ba2Len = r1 - l1 + 1
         val ba3Len = l2 - r1 - 1
         val ba4Len = r2 - l2 + 1
@@ -284,15 +284,7 @@ object Hamming_Distance extends App
         sb.toString()
       }
 
-      override def toString: String = {
-        val sb = new StringBuilder()
-        for (i <- last to 0 by -1) {
-          for (j <- 0 until SIZE if sb.length < n) {
-            sb.append(if (((rarr(i) >>> j) & 1) == 0) 'a' else 'b')
-          }
-        }
-        sb.toString()
-      }
+      override def toString: String = toString(0, n - 1)
 
       def hamming(l1: Int, l2: Int, len: Int): Long = {
         val ba1 = this.copyRaw(l1, l1 + len - 1)
@@ -303,7 +295,7 @@ object Hamming_Distance extends App
         (0 until math.min(ba1.arr.length, ba2.arr.length)).foreach { i =>
           val x = ba1.arr(i) ^ ba2.arr(i)
           if (x != 0) {
-            (0 until SIZE).foreach { j => hd += ((x >> j) & 1) }
+            hd += java.lang.Long.bitCount(x)
           }
         }
         hd
@@ -395,6 +387,7 @@ object Hamming_Distance extends App
         din.close()
       }
     }
+
   }
 
 }
