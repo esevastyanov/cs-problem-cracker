@@ -173,7 +173,6 @@ object Hamming_Distance extends App
       }
 
       def swap(l1: Int, r1: Int, l2: Int, r2: Int): Unit = { // TODO: Use buffer of arrays to reduce gc
-      val ba1 = this.copyRaw(0, l1 - 1)
         val ba1Len = l1
         val ba2 = this.copyRaw(l1, r1)
         val ba2Len = r1 - l1 + 1
@@ -181,7 +180,8 @@ object Hamming_Distance extends App
         val ba3Len = l2 - r1 - 1
         val ba4 = this.copyRaw(l2, r2)
         val ba4Len = r2 - l2 + 1
-        val ba5 = this.copyRaw(r2 + 1, n - 1)
+
+        const(l1, r2, zero = true)
 
         def align(ba: BitArray, s1: Int, s2: Int): Unit = {
           if ((s2 & MOD) > (s1 & MOD)) ba.shiftLeft((s2 & MOD) - (s1 & MOD))
@@ -191,18 +191,9 @@ object Hamming_Distance extends App
         align(ba4, ba1Len, l2)
         align(ba3, ba1Len + ba4Len, r1 + 1)
         align(ba2, ba1Len + ba4Len + ba3Len, l1)
-        align(ba5, ba1Len + ba4Len + ba3Len + ba2Len, r2 + 1)
 
-        var i1, i2, i3, i4, i5 = 0
-        for (i <- 0 to (n - 1) >> POW) {
-          arr(i) = 0
-          rarr(revN(i)) = 0
-          if (ba1.n > 0 &&
-            i <= ((ba1Len - 1) >> POW) && i1 < ba1.arr.length) {
-            arr(i) |= ba1.arr(i1)
-            rarr(revN(i)) |= ba1.rarr(ba1.revN(i1))
-            i1 += 1
-          }
+        var i2, i3, i4 = 0
+        for (i <- (l1 >> POW) to (r2 >> POW)) {
           if (ba4.n > 0 &&
             ba1Len >> POW <= i && i <= ((ba1Len + ba4Len - 1) >> POW) && i4 < ba4.arr.length) {
             arr(i) |= ba4.arr(i4)
@@ -222,12 +213,6 @@ object Hamming_Distance extends App
             arr(i) |= ba2.arr(i2)
             rarr(revN(i)) |= ba2.rarr(ba2.revN(i2))
             i2 += 1
-          }
-          if (ba5.n > 0 &&
-            (ba1Len + ba4Len + ba3Len + ba2Len) >> POW <= i && i5 < ba5.arr.length) {
-            arr(i) |= ba5.arr(i5)
-            rarr(revN(i)) |= ba5.rarr(ba5.revN(i5))
-            i5 += 1
           }
         }
       }
