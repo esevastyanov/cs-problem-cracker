@@ -10,7 +10,7 @@ object Hamming_Distance extends App
   object Solution
   {
     def main(args: Array[String]): Unit = {
-      val sc = new java.util.Scanner(System.in)
+      val sc = new FastReader
       val _ = sc.nextInt()
       val s = sc.next()
       val ba = BitArray.fill(s)
@@ -174,14 +174,13 @@ object Hamming_Distance extends App
 
       def swap(l1: Int, r1: Int, l2: Int, r2: Int): Unit = { // TODO: Use buffer of arrays to reduce gc
         val ba1Len = l1
-        val ba2 = this.copyRaw(l1, r1)
         val ba2Len = r1 - l1 + 1
-        val ba3 = this.copyRaw(r1 + 1, l2 - 1)
         val ba3Len = l2 - r1 - 1
-        val ba4 = this.copyRaw(l2, r2)
         val ba4Len = r2 - l2 + 1
 
-        const(l1, r2, zero = true)
+        val ba2 = this.copyRaw(l1, r1)
+        val ba4 = this.copyRaw(l2, r2)
+
 
         def align(ba: BitArray, s1: Int, s2: Int): Unit = {
           if ((s2 & MOD) > (s1 & MOD)) ba.shiftLeft((s2 & MOD) - (s1 & MOD))
@@ -189,30 +188,60 @@ object Hamming_Distance extends App
         }
 
         align(ba4, ba1Len, l2)
-        align(ba3, ba1Len + ba4Len, r1 + 1)
         align(ba2, ba1Len + ba4Len + ba3Len, l1)
 
-        var i2, i3, i4 = 0
-        for (i <- (l1 >> POW) to (r2 >> POW)) {
-          if (ba4.n > 0 &&
-            ba1Len >> POW <= i && i <= ((ba1Len + ba4Len - 1) >> POW) && i4 < ba4.arr.length) {
-            arr(i) |= ba4.arr(i4)
-            rarr(revN(i)) |= ba4.rarr(ba4.revN(i4))
-            i4 += 1
+
+        if (r1 - l1 == r2 - l2) {
+          const(l1, r1, zero = true)
+          const(l2, r2, zero = true)
+
+          var i2, i4 = 0
+          for (i <- (l1 >> POW) to (r1 >> POW)) {
+            if (ba4.n > 0 &&
+              ba1Len >> POW <= i && i <= ((ba1Len + ba4Len - 1) >> POW) && i4 < ba4.arr.length) {
+              arr(i) |= ba4.arr(i4)
+              rarr(revN(i)) |= ba4.rarr(ba4.revN(i4))
+              i4 += 1
+            }
           }
-          if (ba3.n > 0 &&
-            (ba1Len + ba4Len) >> POW <= i && i <= ((ba1Len + ba4Len + ba3Len - 1) >> POW) && i3 < ba3.arr.length) {
-            arr(i) |= ba3.arr(i3)
-            rarr(revN(i)) |= ba3.rarr(ba3.revN(i3))
-            i3 += 1
+          for (i <- (l2 >> POW) to (r2 >> POW)) {
+            if (ba2.n > 0 &&
+              (ba1Len + ba4Len + ba3Len) >> POW <= i &&
+              i <= ((ba1Len + ba4Len + ba3Len + ba2Len - 1) >> POW) &&
+              i2 < ba2.arr.length) {
+              arr(i) |= ba2.arr(i2)
+              rarr(revN(i)) |= ba2.rarr(ba2.revN(i2))
+              i2 += 1
+            }
           }
-          if (ba2.n > 0 &&
-            (ba1Len + ba4Len + ba3Len) >> POW <= i &&
-            i <= ((ba1Len + ba4Len + ba3Len + ba2Len - 1) >> POW) &&
-            i2 < ba2.arr.length) {
-            arr(i) |= ba2.arr(i2)
-            rarr(revN(i)) |= ba2.rarr(ba2.revN(i2))
-            i2 += 1
+        } else {
+          val ba3 = this.copyRaw(r1 + 1, l2 - 1)
+          align(ba3, ba1Len + ba4Len, r1 + 1)
+
+          const(l1, r2, zero = true)
+
+          var i2, i3, i4 = 0
+          for (i <- (l1 >> POW) to (r2 >> POW)) {
+            if (ba4.n > 0 &&
+              ba1Len >> POW <= i && i <= ((ba1Len + ba4Len - 1) >> POW) && i4 < ba4.arr.length) {
+              arr(i) |= ba4.arr(i4)
+              rarr(revN(i)) |= ba4.rarr(ba4.revN(i4))
+              i4 += 1
+            }
+            if (ba3.n > 0 &&
+              (ba1Len + ba4Len) >> POW <= i && i <= ((ba1Len + ba4Len + ba3Len - 1) >> POW) && i3 < ba3.arr.length) {
+              arr(i) |= ba3.arr(i3)
+              rarr(revN(i)) |= ba3.rarr(ba3.revN(i3))
+              i3 += 1
+            }
+            if (ba2.n > 0 &&
+              (ba1Len + ba4Len + ba3Len) >> POW <= i &&
+              i <= ((ba1Len + ba4Len + ba3Len + ba2Len - 1) >> POW) &&
+              i2 < ba2.arr.length) {
+              arr(i) |= ba2.arr(i2)
+              rarr(revN(i)) |= ba2.rarr(ba2.revN(i2))
+              i2 += 1
+            }
           }
         }
       }
@@ -307,6 +336,65 @@ object Hamming_Distance extends App
       }
     }
 
+    class FastReader()
+    {
+
+      import java.io.DataInputStream
+
+      private val BUFFER_SIZE   = 1 << 16
+      private val din           = new DataInputStream(System.in)
+      private val buffer        = new Array[Byte](BUFFER_SIZE)
+      private var bufferPointer = 0
+      private var bytesRead     = 0
+
+
+      def nextInt(): Int = {
+        var ret = 0
+        var c = read
+        while (c <= ' ') {
+          c = read
+        }
+        val neg = c == '-'
+        if (neg) c = read
+        do {
+          ret = ret * 10 + c - '0'
+          c = read
+        } while (c >= '0' && c <= '9')
+        val res = if (neg) -ret else ret
+        res
+      }
+
+      def next(): String = {
+        val sb = new StringBuilder()
+        var c = read
+        while (c != -1 && (c == '\n' || c == ' ' || c == '\t')) {
+          c = read
+        }
+        while (c != -1 && c != '\n' && c != ' ' && c != '\t') {
+          sb.append(c.toChar)
+          c = read
+        }
+        val res = sb.mkString
+        res
+      }
+
+      private def fillBuffer(): Unit = {
+        bufferPointer = 0
+        bytesRead = din.read(buffer, bufferPointer, BUFFER_SIZE)
+        if (bytesRead == -1) buffer(0) = -1
+      }
+
+      private def read = {
+        if (bufferPointer == bytesRead) fillBuffer()
+        bufferPointer += 1
+        buffer(bufferPointer - 1)
+      }
+
+      def close(): Unit = {
+        if (din == null) return
+        din.close()
+      }
+    }
   }
 
 }
