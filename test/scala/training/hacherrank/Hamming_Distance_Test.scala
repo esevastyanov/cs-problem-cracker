@@ -134,6 +134,23 @@ class Hamming_Distance_Test extends FunSuite with Matchers
     }
   }
 
+  test("reverse") {
+    val lengthLimit = BitArray.SIZE * 3
+    for (l <- 1 to lengthLimit) {
+      val s = Array.fill(l)(if (math.random() < .5) 'a' else 'b').mkString
+      for (i <- 0 until math.min(BitArray.SIZE, l)) {
+        for (j <- i until math.min(BitArray.SIZE, l)) {
+          val ba = BitArray.fill(s)
+          ba.reverse(i, j)
+          val res = Try(s.substring(0, i)).getOrElse("") +
+            s.substring(i, j + 1).reverse +
+            Try(s.substring(j + 1)).getOrElse("")
+          ba.toString shouldBe res
+        }
+      }
+    }
+  }
+
   test("swap") {
     val lengthLimit = BitArray.SIZE * 2
     for (l <- 1 to lengthLimit) {
@@ -153,23 +170,6 @@ class Hamming_Distance_Test extends FunSuite with Matchers
               ba.toString shouldBe res
             }
           }
-        }
-      }
-    }
-  }
-
-  test("reverse") {
-    val lengthLimit = BitArray.SIZE * 3
-    for (l <- 1 to lengthLimit) {
-      val s = Array.fill(l)(if (math.random() < .5) 'a' else 'b').mkString
-      for (i <- 0 until math.min(BitArray.SIZE, l)) {
-        for (j <- i until math.min(BitArray.SIZE, l)) {
-          val ba = BitArray.fill(s)
-          ba.reverse(i, j)
-          val res = Try(s.substring(0, i)).getOrElse("") +
-            s.substring(i, j + 1).reverse +
-            Try(s.substring(j + 1)).getOrElse("")
-          ba.toString shouldBe res
         }
       }
     }

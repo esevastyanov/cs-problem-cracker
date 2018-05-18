@@ -39,8 +39,9 @@ object Hamming_Distance extends App
       val ONE  : T        = 1
       val MOD  : Int      = ~(~0 << POW)
       val last : Int      = ((n - 1) >> POW) + 1
+      val lastI: Int      = (last + 1) << POW
 
-      def revI(i: Int): Int = (last + 1) * SIZE - i - 1
+      def revI(i: Int): Int = lastI - i - 1
 
       def revN(n: Int): Int = last - n
 
@@ -156,11 +157,12 @@ object Hamming_Distance extends App
       }
 
       def copyRaw(l: Int, r: Int): BitArray = {
-        val ba = new BitArray(((r >> POW) - (l >> POW) + 1) * SIZE)
+        val ba = new BitArray(((r >> POW) - (l >> POW) + 1) << POW)
         (l >> POW to r >> POW).foreach(i => ba.arr(i - (l >> POW)) = arr(i)) // TODO: Combine
-        (revI(r) >> POW to revI(l) >> POW).foreach(i => ba.rarr(ba.revN((revI(l) >> POW) - i)) = rarr(i)) // TODO: Combine
+        (revI(r) >> POW to revI(l) >> POW)
+          .foreach(i => ba.rarr(ba.revN((revI(l) >> POW) - i)) = rarr(i)) // TODO: Combine
         ba.const(0, (l & MOD) - 1, zero = true)
-        ba.const((l & MOD) + r - l + 1, ((r >> POW) - (l >> POW) + 1) * SIZE - 1, zero = true)
+        ba.const((l & MOD) + r - l + 1, (((r >> POW) - (l >> POW) + 1) << POW) - 1, zero = true)
         ba
       }
 
@@ -257,9 +259,12 @@ object Hamming_Distance extends App
         var skip = SIZE - (revI(l) & MOD) - 1
         val sb = new StringBuilder()
         for (i <- (revI(l) >> POW) to (revI(r) >> POW) by -1) {
-          for (j <- 0 until SIZE if sb.length < r -l + 1) {
-            if (skip > 0) skip -= 1
-            else sb.append(if (((rarr(i) >>> j) & 1) == 0) 'a' else 'b')
+          for (j <- 0 until SIZE if sb.length < r - l + 1) {
+            if (skip > 0) {
+              skip -= 1
+            } else {
+              sb.append(if (((rarr(i) >>> j) & 1) == 0) 'a' else 'b')
+            }
           }
         }
         sb.toString()
@@ -306,7 +311,7 @@ object Hamming_Distance extends App
 
       def fill(s: String): BitArray = {
         val ba = new BitArray(s.length)
-        val last = (s.length - 1) / SIZE
+        val last = (s.length - 1) >> POW
         s.grouped(SIZE).zipWithIndex.foreach { case (is, i) =>
           val sb = new StringBuilder(is)
           (is.length until SIZE).foreach { _ => sb.append('a') }
