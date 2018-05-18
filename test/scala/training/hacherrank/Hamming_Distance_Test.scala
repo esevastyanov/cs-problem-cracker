@@ -8,6 +8,24 @@ import training.hackerrank.Hamming_Distance.Solution.BitArray
 class Hamming_Distance_Test extends FunSuite with Matchers
 {
 
+  ignore("custom") {
+    val ba = BitArray.fill("bb")
+    ba.toString(0, 1) shouldBe "bb"
+  }
+
+  test("toString") {
+    val lengthLimit = BitArray.SIZE * 3
+    for (l <- 1 to lengthLimit) {
+      val s = Array.fill(l)(if (math.random() < .5) 'a' else 'b').mkString
+      for (i <- 0 until math.min(BitArray.SIZE, l)) {
+        for (j <- math.max(i, l - BitArray.SIZE) until l) {
+          val ba = BitArray.fill(s)
+          ba.toString(i, j) shouldBe s.substring(i, j + 1)
+        }
+      }
+    }
+  }
+
   test("const") {
     val lengthLimit = BitArray.SIZE * 3
     for (l <- 1 to lengthLimit) {
@@ -98,7 +116,7 @@ class Hamming_Distance_Test extends FunSuite with Matchers
   }
 
   test("hamming") {
-    val lengthLimit = BitArray.SIZE * 3
+    val lengthLimit = BitArray.SIZE * 2
     for (l <- 1 to lengthLimit) {
       val s = Array.fill(l)(if (math.random() < .5) 'a' else 'b').mkString
       val ba = BitArray.fill(s)
@@ -135,6 +153,23 @@ class Hamming_Distance_Test extends FunSuite with Matchers
               ba.toString shouldBe res
             }
           }
+        }
+      }
+    }
+  }
+
+  test("reverse") {
+    val lengthLimit = BitArray.SIZE * 3
+    for (l <- 1 to lengthLimit) {
+      val s = Array.fill(l)(if (math.random() < .5) 'a' else 'b').mkString
+      for (i <- 0 until math.min(BitArray.SIZE, l)) {
+        for (j <- i until math.min(BitArray.SIZE, l)) {
+          val ba = BitArray.fill(s)
+          ba.reverse(i, j)
+          val res = Try(s.substring(0, i)).getOrElse("") +
+            s.substring(i, j + 1).reverse +
+            Try(s.substring(j + 1)).getOrElse("")
+          ba.toString shouldBe res
         }
       }
     }

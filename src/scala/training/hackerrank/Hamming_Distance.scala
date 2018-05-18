@@ -32,28 +32,17 @@ object Hamming_Distance extends App
 
       type T = Long
 
-      val arr  : Array[Long] = new Array[Long](((n - 1) >> POW) + 2)
-      val M_ONE: Long        = ~0
-      val ZERO : Long        = 0
-      val ONE  : Long        = 1
-      val MOD  : Int        = ~(~0 << POW)
+      val arr  : Array[T] = new Array[T](((n - 1) >> POW) + 2)
+      val rarr : Array[T] = new Array[T](((n - 1) >> POW) + 2)
+      val M_ONE: T        = ~0
+      val ZERO : T        = 0
+      val ONE  : T        = 1
+      val MOD  : Int      = ~(~0 << POW)
+      val last : Int      = ((n - 1) >> POW) + 1
 
-      def at(i: Int): Boolean = {
-        val na = i >> POW
-        val ne = i & MOD
-        (arr(na) >>> (SIZE - 1 - ne) & ONE) == 0
-      }
+      def revI(i: Int): Int = (last + 1) * SIZE - i - 1
 
-      def assign(k: Int, ch: Char): Unit = {
-        assign(k, ch == 'a')
-      }
-
-      def assign(k: Int, zero: Boolean): Unit = {
-        val i = k >> POW
-        val s = k & MOD
-        arr(i) &= ~(ONE << (SIZE - 1 - s))
-        arr(i) |= (if (zero) ZERO else ONE) << (SIZE - 1 - s)
-      }
+      def revN(n: Int): Int = last - n
 
       def const(l: Int, r: Int, ch: Char): Unit = {
         const(l, r, ch == 'a')
@@ -62,55 +51,79 @@ object Hamming_Distance extends App
       def const(l: Int, r: Int, zero: Boolean): Unit = {
         if (r < l) return
 
-        def constBlock(n: Int): Unit = {
-          if (zero) arr(n) = ZERO else arr(n) = M_ONE
+        def constBlock(n: Int, a: Array[T]): Unit = {
+          if (zero) a(n) = ZERO else a(n) = M_ONE
         }
 
-        def constBlockRight(i: Int): Unit = {
+        def constBlockRight(i: Int, a: Array[T]): Unit = {
           val pattern = M_ONE << (SIZE - (i & MOD))
-          if (zero) arr(i >> POW) &= pattern else arr(i >> POW) |= ~pattern
+          if (zero) a(i >> POW) &= pattern else a(i >> POW) |= ~pattern
         }
 
-        def constBlockLeft(i: Int): Unit = {
+        def constBlockLeft(i: Int, a: Array[T]): Unit = {
           val pattern = M_ONE << (SIZE - (i & MOD) - 1)
-          if (zero) arr(i >> POW) &= ~pattern else arr(i >> POW) |= pattern
+          if (zero) a(i >> POW) &= ~pattern else a(i >> POW) |= pattern
         }
 
-        def constBlockMiddle(l: Int, r: Int): Unit = {
+        def constBlockMiddle(l: Int, r: Int, a: Array[T]): Unit = {
           val pattern = (M_ONE << (SIZE - (l & MOD))) | (M_ONE >>> ((r & MOD) + 1))
-          if (zero) arr(l >> POW) &= pattern else arr(l >> POW) |= ~pattern
+          if (zero) a(l >> POW) &= pattern else a(l >> POW) |= ~pattern
         }
 
         if ((l >> POW) != (r >> POW)) {
-          if ((l & MOD) == 0) constBlock(l >> POW) else constBlockRight(l)
-          ((l >> POW) + 1 until r >> POW).foreach(constBlock)
-          if (((r + 1) & MOD) == 0) constBlock(r >> POW) else constBlockLeft(r)
+          if ((l & MOD) == 0) {
+            constBlock(l >> POW, arr)
+            constBlock(revN(l >> POW), rarr)
+          } else {
+            constBlockRight(l, arr)
+            constBlockLeft(revI(l), rarr)
+          }
+          ((l >> POW) + 1 until r >> POW).foreach { i =>
+            constBlock(i, arr)
+            constBlock(revN(i), rarr)
+          }
+          if (((r + 1) & MOD) == 0) {
+            constBlock(r >> POW, arr)
+            constBlock(revN(r >> POW), rarr)
+          } else {
+            constBlockLeft(r, arr)
+            constBlockRight(revI(r), rarr)
+          }
         } else {
           if ((l & MOD) == 0 && ((r + 1) & MOD) == 0) {
-            constBlock(l >> POW)
+            constBlock(l >> POW, arr)
+            constBlock(revN(l >> POW), rarr)
           } else if ((l & MOD) == 0) {
-            constBlockLeft(r)
+            constBlockLeft(r, arr)
+            constBlockRight(revI(r), rarr)
           } else if (((r + 1) & MOD) == 0) {
-            constBlockRight(l)
+            constBlockRight(l, arr)
+            constBlockLeft(revI(l), rarr)
           } else {
-            constBlockMiddle(l, r)
+            constBlockMiddle(l, r, arr)
+            constBlockMiddle(revI(r), revI(l), rarr)
           }
         }
       }
 
       def shiftLeft(k: Int): Unit = {
+        shiftLeft(k, arr)
+        shiftRight(k, rarr)
+      }
+
+      def shiftLeft(k: Int, a: Array[T]): Unit = {
         if (k != 0) {
           val d = k >> POW
           if (d != 0) {
-            arr.indices.foreach { i => if (i + d < arr.length) arr(i) = arr(i + d) }
-            (arr.length - d until arr.length).foreach(arr(_) = 0)
+            a.indices.foreach { i => if (i + d < a.length) a(i) = a(i + d) }
+            (a.length - d until a.length).foreach(a(_) = 0)
           }
           val sh = k & MOD
           if (sh != 0) {
-            arr.indices.foreach { i =>
-              arr(i) <<= sh
-              if (i + 1 < arr.length) {
-                arr(i) |= arr(i + 1) >>> SIZE - sh
+            a.indices.foreach { i =>
+              a(i) <<= sh
+              if (i + 1 < a.length) {
+                a(i) |= a(i + 1) >>> SIZE - sh
               }
             }
           }
@@ -118,19 +131,24 @@ object Hamming_Distance extends App
       }
 
       def shiftRight(k: Int): Unit = {
+        shiftRight(k, arr)
+        shiftLeft(k, rarr)
+      }
+
+      def shiftRight(k: Int, a: Array[T]): Unit = {
         if (k != 0) {
           val d = k >> POW
           if (d != 0) {
-            arr.indices.reverse.foreach { i => // TODO: Reverse
-              if (i - d >= 0) arr(i) = arr(i - d) else arr(i) = 0
+            a.indices.reverse.foreach { i => // TODO: Reverse
+              if (i - d >= 0) a(i) = a(i - d) else a(i) = 0
             }
           }
           val sh = k & MOD
           if (sh != 0) {
-            arr.indices.reverse.foreach { i => // TODO: Reverse
-              arr(i) >>>= sh
+            a.indices.reverse.foreach { i => // TODO: Reverse
+              a(i) >>>= sh
               if (i - 1 >= 0) {
-                arr(i) |= arr(i - 1) << SIZE - sh
+                a(i) |= a(i - 1) << SIZE - sh
               }
             }
           }
@@ -139,7 +157,8 @@ object Hamming_Distance extends App
 
       def copyRaw(l: Int, r: Int): BitArray = {
         val ba = new BitArray(((r >> POW) - (l >> POW) + 1) * SIZE)
-        (l >> POW to r >> POW).foreach(i => ba.arr(i - (l >> POW)) = arr(i))
+        (l >> POW to r >> POW).foreach(i => ba.arr(i - (l >> POW)) = arr(i)) // TODO: Combine
+        (revI(r) >> POW to revI(l) >> POW).foreach(i => ba.rarr(ba.revN((revI(l) >> POW) - i)) = rarr(i)) // TODO: Combine
         ba.const(0, (l & MOD) - 1, zero = true)
         ba.const((l & MOD) + r - l + 1, ((r >> POW) - (l >> POW) + 1) * SIZE - 1, zero = true)
         ba
@@ -151,8 +170,8 @@ object Hamming_Distance extends App
         ba
       }
 
-      def swap(l1: Int, r1: Int, l2: Int, r2: Int): Unit = {
-        val ba1 = this.copyRaw(0, l1 - 1)
+      def swap(l1: Int, r1: Int, l2: Int, r2: Int): Unit = { // TODO: Use buffer of arrays to reduce gc
+      val ba1 = this.copyRaw(0, l1 - 1)
         val ba1Len = l1
         val ba2 = this.copyRaw(l1, r1)
         val ba2Len = r1 - l1 + 1
@@ -175,48 +194,85 @@ object Hamming_Distance extends App
         var i1, i2, i3, i4, i5 = 0
         for (i <- 0 to (n - 1) >> POW) {
           arr(i) = 0
-          if (i <= ((ba1Len - 1) >> POW) && i1 < ba1.arr.length) {
+          rarr(revN(i)) = 0
+          if (ba1.n > 0 &&
+            i <= ((ba1Len - 1) >> POW) && i1 < ba1.arr.length) {
             arr(i) |= ba1.arr(i1)
+            rarr(revN(i)) |= ba1.rarr(ba1.revN(i1))
             i1 += 1
           }
-          if (ba1Len >> POW <= i && i <= ((ba1Len + ba4Len - 1) >> POW) && i4 < ba4.arr.length) {
+          if (ba4.n > 0 &&
+            ba1Len >> POW <= i && i <= ((ba1Len + ba4Len - 1) >> POW) && i4 < ba4.arr.length) {
             arr(i) |= ba4.arr(i4)
+            rarr(revN(i)) |= ba4.rarr(ba4.revN(i4))
             i4 += 1
           }
-          if ((ba1Len + ba4Len) >> POW <= i && i <= ((ba1Len + ba4Len + ba3Len - 1) >> POW) && i3 < ba3.arr.length) {
+          if (ba3.n > 0 &&
+            (ba1Len + ba4Len) >> POW <= i && i <= ((ba1Len + ba4Len + ba3Len - 1) >> POW) && i3 < ba3.arr.length) {
             arr(i) |= ba3.arr(i3)
+            rarr(revN(i)) |= ba3.rarr(ba3.revN(i3))
             i3 += 1
           }
-          if (
+          if (ba2.n > 0 &&
             (ba1Len + ba4Len + ba3Len) >> POW <= i &&
-              i <= ((ba1Len + ba4Len + ba3Len + ba2Len - 1) >> POW) &&
-              i2 < ba2.arr.length) {
+            i <= ((ba1Len + ba4Len + ba3Len + ba2Len - 1) >> POW) &&
+            i2 < ba2.arr.length) {
             arr(i) |= ba2.arr(i2)
+            rarr(revN(i)) |= ba2.rarr(ba2.revN(i2))
             i2 += 1
           }
-          if ((ba1Len + ba4Len + ba3Len + ba2Len) >> POW <= i && i5 < ba5.arr.length) {
+          if (ba5.n > 0 &&
+            (ba1Len + ba4Len + ba3Len + ba2Len) >> POW <= i && i5 < ba5.arr.length) {
             arr(i) |= ba5.arr(i5)
+            rarr(revN(i)) |= ba5.rarr(ba5.revN(i5))
             i5 += 1
           }
         }
       }
 
       def reverse(l: Int, r: Int): Unit = {
-        (0 to (r - l) >> 1).foreach { i =>
-          if (l + i < r - i) {
-            val t = this.at(l + i)
-            this.assign(l + i, this.at(r - i))
-            this.assign(r - i, t)
-          }
+        val ba = copyRaw(l, r)
+
+        const(l, r, zero = true)
+
+        if ((revI(r) & MOD) > (l & MOD)) {
+          shiftRight((revI(r) & MOD) - (l & MOD), ba.arr)
+          shiftLeft((revI(r) & MOD) - (l & MOD), ba.rarr)
+        }
+        if ((revI(r) & MOD) < (l & MOD)) {
+          shiftLeft((l & MOD) - (revI(r) & MOD), ba.arr)
+          shiftRight((l & MOD) - (revI(r) & MOD), ba.rarr)
+        }
+
+        ((l >> POW) to (r >> POW)).foreach { i =>
+          arr(i) |= ba.rarr(i - (l >> POW) + 1)
+        }
+
+        ((revI(r) >> POW) to (revI(l) >> POW)).foreach { i =>
+          rarr(i) |= ba.arr(i - (revI(r) >> POW))
         }
       }
 
       def toString(l: Int, r: Int): String = {
-        (l to r).map(i => if (at(i)) 'a' else 'b').mkString
+        var skip = SIZE - (revI(l) & MOD) - 1
+        val sb = new StringBuilder()
+        for (i <- (revI(l) >> POW) to (revI(r) >> POW) by -1) {
+          for (j <- 0 until SIZE if sb.length < r -l + 1) {
+            if (skip > 0) skip -= 1
+            else sb.append(if (((rarr(i) >>> j) & 1) == 0) 'a' else 'b')
+          }
+        }
+        sb.toString()
       }
 
       override def toString: String = {
-        (0 until n).map(i => if (at(i)) 'a' else 'b').mkString
+        val sb = new StringBuilder()
+        for (i <- last to 0 by -1) {
+          for (j <- 0 until SIZE if sb.length < n) {
+            sb.append(if (((rarr(i) >>> j) & 1) == 0) 'a' else 'b')
+          }
+        }
+        sb.toString()
       }
 
       def hamming(l1: Int, l2: Int, len: Int): Long = {
@@ -234,16 +290,29 @@ object Hamming_Distance extends App
         hd
       }
 
+      def fill(s: String, n: Int, a: Array[T]): Unit = {
+        if (s.length != SIZE) sys.error(s"The string length should be eq to $SIZE: ${s.length}")
+        s.indices.foreach { i =>
+          a(n) <<= 1
+          if (s(i) != 'a') a(n) |= 1
+        }
+      }
     }
 
     object BitArray
     {
-      val POW = 6
+      val POW  = 6
       val SIZE = 64
 
       def fill(s: String): BitArray = {
         val ba = new BitArray(s.length)
-        s.indices.foreach { i => ba.assign(i, s(i)) }
+        val last = (s.length - 1) / SIZE
+        s.grouped(SIZE).zipWithIndex.foreach { case (is, i) =>
+          val sb = new StringBuilder(is)
+          (is.length until SIZE).foreach { _ => sb.append('a') }
+          ba.fill(sb.toString(), i, ba.arr)
+          ba.fill(sb.toString().reverse, ba.revN(i), ba.rarr)
+        }
         ba
       }
     }
