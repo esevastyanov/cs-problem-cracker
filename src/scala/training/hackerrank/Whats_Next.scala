@@ -21,7 +21,7 @@ object Whats_Next extends App
           if (before.last == 0) {
             before = before.slice(0, before.length - 1)
             if (before.nonEmpty) {
-              before(before.length -1) += 1
+              before(before.length - 1) += 1
               before ++ ListBuffer(1L)
             } else {
               ListBuffer(1L, 1L)
@@ -33,11 +33,9 @@ object Whats_Next extends App
           ListBuffer(1L, 1L)
         }
       if (arr.length % 2 > 0) {
-        var after = arr.last
-        after -= 1
-        before ++ (if (after > 0) ListBuffer(after) else Nil)
+        before ++ (if (arr.last > 1) ListBuffer(arr.last - 1) else Nil)
       } else {
-        var after = arr.slice(i, arr.length) // 2 elements
+        val after = arr.slice(i, arr.length) // 2 elements
         before(before.length - 1) += after.last
         before ++ (if (after.head > 1) ListBuffer(after.head - 1) else Nil)
       }
