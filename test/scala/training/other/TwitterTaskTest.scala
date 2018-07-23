@@ -1,4 +1,4 @@
-package training
+package training.other
 
 import org.scalatest._
 

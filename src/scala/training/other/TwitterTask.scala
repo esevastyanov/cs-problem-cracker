@@ -1,4 +1,4 @@
-package training
+package training.other
 
 /**
   * https://habrahabr.ru/post/200190/
