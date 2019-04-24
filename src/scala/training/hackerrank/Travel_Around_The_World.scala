@@ -11,33 +11,15 @@ object Travel_Around_The_World extends App
   {
 
     def travelAroundTheWorld(n: Int, c: Long, a: Array[Long], b: Array[Long]): Int = {
-      val m = Array.fill(n)(Array.fill(n)(0L))
-      for (i <- 0 until n) {
-        for (j <- i + 1 until n + i + 1) {
-          val prev = (j + n - 1) % n
-          if (m(i)(prev) >= 0) {
-            m(i)(j % n) = math.min(m(i)(prev) + a(prev), c) - b(prev)
-          } else {
-            m(i)(j % n) = m(i)(prev)
-          }
-        }
-      }
-      (0 until n).count(i => m(i)(i) >= 0)
-    }
-
-    def _travelAroundTheWorld(n: Int, c: Long, a: Array[Long], b: Array[Long]): Int = {
-      var total = 0
-      for (i <- 0 until n) {
-        var tank = 0L
-        for (j <- i + 1 until n + i + 1) {
-          val prev = (j + n - 1) % n
-          if (tank >= 0) {
-            tank = math.min(tank + a(prev), c) - b(prev)
-          }
-        }
-        if (tank >= 0) total += 1
-      }
-      total
+      val d = Array.fill(n)(0L)
+      val dmin = Array.fill(n)(0L)
+      (0 until n).foreach { i => d(i) = a(i) - b(i) }
+      dmin(n - 1) = d(n - 1)
+      (n - 2 to 0 by -1).foreach { i => dmin(i) = math.min(d(i), d(i) + dmin(i + 1)) }
+      dmin(n - 1) = math.min(d(n - 1), d(n - 1) + dmin(0))
+      (n - 2 to 0 by -1).foreach { i => dmin(i) = math.min(d(i), d(i) + dmin(i + 1)) }
+      (0 until n).foreach { i => if (a(i) - dmin(i) > c) return 0 }
+      dmin.count(_ >= 0)
     }
 
     def main(args: Array[String]): Unit = {
@@ -46,8 +28,9 @@ object Travel_Around_The_World extends App
       val c = sc.nextLong()
       val a = Array.fill(n)(sc.nextLong())
       val b = Array.fill(n)(sc.nextLong())
-      println(_travelAroundTheWorld(n, c, a, b))
+      println(travelAroundTheWorld(n, c, a, b))
     }
+
   }
 
 }
