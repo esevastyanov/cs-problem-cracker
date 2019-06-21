@@ -10,42 +10,58 @@ object Maximum_Palindromes extends App
   object Solution
   {
 
-    val cache: Array[Long] = Array.fill(100001)(0L)
-    cache(0) = 1L
-    cache(1) = 1L
+    val p = 1000000007
 
-    def factorial(n: Int, p: Int): Long = {
-      if (cache(n) != 0) return cache(n)
-      val res = factorial(n - 1, p) * n % p
-      cache(n) = res
-      res
+    val f_cache: Array[Long] = {
+      val a = Array.fill(100001)(1L)
+      (2 until 100001).foreach(i => a(i) = i * a(i - 1) % p)
+      a
+    }
+
+    val e_cache: collection.mutable.ListBuffer[Long] = {
+      val l = collection.mutable.ListBuffer[Long]()
+      var e = p - 2
+      while (e != 1) {
+        l += e % 2
+        e /= 2
+      }
+      l.reverse
     }
 
     def exp(n: Long, e: Int, p: Int): Long = {
       if (e == 0) return 1
       if (e == 1) return n
-      if (e % 2 == 0) exp(n * n % p, e / 2, p)
-      else n * exp(n * n % p, (e - 1) / 2, p) % p
+      var total = n
+      e_cache.foreach {
+        case 0 => total = total * total % p
+        case 1 => total = ((n * total) % p * total) % p
+      }
+      total
     }
 
-    def countMaxPalindromes(s: String, i: Int, j: Int): Long = {
-      val a = Array.fill('z' - 'a' + 1)(0)
-      for (k <- i to j) {
-        a(s(k) - 'a') += 1
-      }
+    def countMaxPalindromes(a: Array[Int]): Long = {
       val halves = a.map(_ / 2)
-      val p = 1000000007
       val res =
-        ((factorial(halves.sum, p) * (halves.map(factorial(_, p)).map(exp(_, p-2, p)).reduce(_ * _ % p) % p) % p) * math.max(1, a.count(_ % 2 == 1))) % p
+        (f_cache(halves.sum) * halves.map(f_cache(_)).map(exp(_, p-2, p)).reduce(_ * _ % p) % p) *
+          math.max(1, a.count(_ % 2 == 1)) % p
       res
     }
 
     def main(args: Array[String]): Unit = {
       val sc = new java.util.Scanner(System.in)
       val s = sc.next()
+      val arr = Array.fill(s.length)(Array.fill('z' - 'a' + 1)(0))
+      arr(0)(s(0) - 'a') += 1
+      (1 until s.length).foreach { i =>
+        arr(i).indices.foreach(j => arr(i)(j) = arr(i-1)(j))
+        arr(i)(s(i) - 'a') += 1
+      }
       (1 to sc.nextInt()).foreach { _ =>
-        val i, j = sc.nextInt()
-        println(countMaxPalindromes(s, i - 1, j - 1))
+        val i, j = sc.nextInt() - 1
+        val ai = if (i == 0) Array.fill('z' - 'a' + 1)(0) else arr(i - 1)
+        val aj = arr(j)
+        val a = aj.zip(ai).map { case (jj, ii) => jj - ii }
+        println(countMaxPalindromes(a))
       }
     }
   }
