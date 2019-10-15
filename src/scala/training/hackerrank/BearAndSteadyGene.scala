@@ -9,6 +9,8 @@ object BearAndSteadyGene extends App
 
   object Solution
   {
+    def sub(a: Array[Int], b: Array[Int]): Array[Int] = a.zip(b).map { case (ai, bi) => ai - bi }
+
     def main(args: Array[String]): Unit = {
       val sc = new java.util.Scanner(System.in)
       val n = sc.nextInt()
@@ -31,15 +33,27 @@ object BearAndSteadyGene extends App
         println(0)
         return
       }
-      for (i <- s.last.max - n / 4 to n) {
-        for (j <- 0 until n - i) {
-          if ((0 until 4).forall(k => n / 4 >= (if (j != 0) s(j - 1)(k) else 0) + s(n - 1)(k) - s(j + i - 1)(k))) {
-            println(i)
-            return
-          }
+      val toRemove = s.last.map(_ - n / 4).map(math.max(0, _))
+      // https://www.geeksforgeeks.org/find-the-smallest-window-in-a-string-containing-all-characters-of-another-string/
+      var i = -1
+      var j = 0
+      var minLen = n
+      while (i < n && j <= n) {
+        val si = if (i >= 0) s(i) else Array.fill(4)(0)
+        val sj = s(math.min(j, n - 1))
+        val predArr = sub(sub(sj, si), toRemove)
+        if (predArr.forall(_ >= 0)) {
+          minLen = math.min(j - i, minLen)
+          i += 1
+        }
+        if (predArr.exists(_ < 0)) {
+          j += 1
+        }
+        if (i == j) {
+          j += 1
         }
       }
-      println(n)
+      println(minLen)
     }
   }
 
